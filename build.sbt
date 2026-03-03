@@ -26,4 +26,4 @@ lazy val it = project
   .settings(libraryDependencies ++= AppDependencies.it)
 
 addCommandAlias("checkLint", "scalafmtSbtCheck;scalafmtCheckAll")
-addCommandAlias("lint", "scalafmtSbt;scalafmtAll")
+addCommandAlias("lint", "scalafixAll;scalafmtSbt;scalafmtAll")

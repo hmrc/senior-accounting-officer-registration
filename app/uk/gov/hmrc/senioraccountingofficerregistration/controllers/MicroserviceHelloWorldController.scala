@@ -16,10 +16,12 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.controllers
 
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import javax.inject.{Inject, Singleton}
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+
 import scala.concurrent.Future
+
+import javax.inject.{Inject, Singleton}
 
 @Singleton()
 class MicroserviceHelloWorldController @Inject() (cc: ControllerComponents) extends BackendController(cc) {
