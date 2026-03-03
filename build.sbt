@@ -12,7 +12,12 @@ lazy val microservice = Project("senior-accounting-officer-registration", file("
     scalacOptions += "-Wconf:src=routes/.*:s",
     PlayKeys.playDefaultPort := 10059
   )
-  .settings(CodeCoverageSettings.settings: _*)
+  .settings(CodeCoverageSettings.settings *)
+  .settings(scalafixSettings *)
+
+val scalafixSettings: Seq[Setting[?]] = Seq(
+  semanticdbEnabled := true
+)
 
 lazy val it = project
   .enablePlugins(PlayScala)

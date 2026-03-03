@@ -19,7 +19,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.controllers
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.http.Status
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
 
 class MicroserviceHelloWorldControllerSpec extends AnyWordSpec with Matchers {
