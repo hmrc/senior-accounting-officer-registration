@@ -4,3 +4,8 @@
 #  summary: Hello world endpoint
 ###
 GET        /hello-world             uk.gov.hmrc.senioraccountingofficerregistration.controllers.MicroserviceHelloWorldController.hello
+
+###
+#  summary: Sign up with ETMP
+###
+POST       /sign-up                 uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUp

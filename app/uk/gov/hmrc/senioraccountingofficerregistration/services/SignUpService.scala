@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.config
+package uk.gov.hmrc.senioraccountingofficerregistration.services
 
-import play.api.Configuration
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EtmpSubscriptionConnector
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
+
+import scala.concurrent.Future
 
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration) {
+class SignUpService @Inject() (etmpSubscriptionConnector: EtmpSubscriptionConnector) {
 
-  val appName: String = config.get[String]("appName")
-
-  val etmpSubscriptionUrl: String =
-    s"${servicesConfig.baseUrl("etmp-subscription-api")}${config.get[String]("microservice.services.etmp-subscription-api.path")}"
-
-  val etmpSubscriptionAuthorization: String =
-    config.get[String]("microservice.services.etmp-subscription-api.authorization")
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
+    etmpSubscriptionConnector.signUp(signUpRequest)
 }
