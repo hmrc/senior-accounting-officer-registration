@@ -46,7 +46,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
-        "X-Correlation-Id"        -> UUID.randomUUID().toString,
+        "CorrelationId"           -> UUID.randomUUID().toString,
         "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
       )
       .execute[HttpResponse]
