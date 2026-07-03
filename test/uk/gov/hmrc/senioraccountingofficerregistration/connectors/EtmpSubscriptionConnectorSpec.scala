@@ -47,10 +47,11 @@ class EtmpSubscriptionConnectorSpec
 
     GuiceApplicationBuilder()
       .configure(
-        "microservice.services.hip.protocol"      -> "http",
-        "microservice.services.hip.host"          -> "localhost",
-        "microservice.services.hip.port"          -> wireMockServer.port(),
-        "microservice.services.hip.authorization" -> "Basic sometoken"
+        "microservice.services.hip.protocol" -> "http",
+        "microservice.services.hip.host"     -> "localhost",
+        "microservice.services.hip.port"     -> wireMockServer.port(),
+        "microservice.services.hip.clientId" -> "some-client-id",
+        "microservice.services.hip.secret"   -> "some-client-secret"
       )
       .disable[PlayMongoModule]
       .build()
@@ -73,7 +74,7 @@ class EtmpSubscriptionConnectorSpec
       wireMockServer.stubFor(
         post(urlEqualTo("/sign-up"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic sometoken"))
+          .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic c29tZS1jbGllbnQtaWQ6c29tZS1jbGllbnQtc2VjcmV0"))
           .withHeader("X-Transmitting-System", equalTo("HIP"))
           .withHeader("X-Originating-System", equalTo("MDTP"))
           .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
