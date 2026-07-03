@@ -27,8 +27,8 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
   val appName: String = config.get[String]("appName")
 
   val etmpSubscriptionUrl: String =
-    s"${servicesConfig.baseUrl("etmp-subscription-api")}${config.get[String]("microservice.services.etmp-subscription-api.path")}"
+    s"${servicesConfig.baseUrl("hip")}/sign-up"
 
   val etmpSubscriptionAuthorization: String =
-    config.get[String]("microservice.services.etmp-subscription-api.authorization")
+    config.get[String]("microservice.services.hip.authorization")
 }

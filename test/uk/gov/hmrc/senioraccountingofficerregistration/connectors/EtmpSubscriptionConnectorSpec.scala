@@ -47,11 +47,10 @@ class EtmpSubscriptionConnectorSpec
 
     GuiceApplicationBuilder()
       .configure(
-        "microservice.services.etmp-subscription-api.protocol"      -> "http",
-        "microservice.services.etmp-subscription-api.host"          -> "localhost",
-        "microservice.services.etmp-subscription-api.port"          -> wireMockServer.port(),
-        "microservice.services.etmp-subscription-api.path"          -> "/sign-up",
-        "microservice.services.etmp-subscription-api.authorization" -> "Basic sometoken"
+        "microservice.services.hip.protocol"      -> "http",
+        "microservice.services.hip.host"          -> "localhost",
+        "microservice.services.hip.port"          -> wireMockServer.port(),
+        "microservice.services.hip.authorization" -> "Basic sometoken"
       )
       .disable[PlayMongoModule]
       .build()
