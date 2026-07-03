@@ -1,7 +1,33 @@
 
 # senior-accounting-officer-registration
 
-This is a placeholder README.md for a new repository
+Backend microservice for Senior Accounting Officer registration.
+
+The service exposes protected registration endpoints and orchestrates sign-up requests with downstream services.
+
+## Running the service
+
+Start the service locally with:
+
+```bash
+sbt run
+```
+
+By default the service runs on port `9000`.
+
+## Tests
+
+Run the unit tests with:
+
+```bash
+sbt test
+```
+
+Run formatting and lint checks with:
+
+```bash
+sbt lint
+```
 
 ## OpenApi Schema
 

@@ -17,7 +17,6 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
 import play.api.http.HeaderNames
-import play.api.http.MimeTypes
 import play.api.http.Status.CREATED
 import play.api.libs.json.Json
 import play.api.libs.ws.writeableOf_JsValue
@@ -44,11 +43,10 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
       .post(url"${appConfig.etmpSubscriptionUrl}")
       .withBody(Json.toJson(signUpRequest))
       .setHeader(
-        HeaderNames.CONTENT_TYPE  -> MimeTypes.JSON,
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
-        "correlationid"           -> UUID.randomUUID().toString,
+        "X-Correlation-Id"        -> UUID.randomUUID().toString,
         "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
       )
       .execute[HttpResponse]

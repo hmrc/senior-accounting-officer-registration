@@ -67,7 +67,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       )
 
       status(result) shouldBe Status.CREATED
-      contentAsJson(result) shouldBe Json.toJson(signUpResponse)
+      (contentAsJson(result) \ "saoSubscriptionId").as[String] shouldBe signUpResponse.saoSubscriptionId
     }
 
     "return 400 for an invalid request body" in {

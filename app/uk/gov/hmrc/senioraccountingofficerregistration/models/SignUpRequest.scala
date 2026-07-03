@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{Json, OWrites, Reads}
 
 case class SignUpRequest(idType: String, idNumber: String)
 
 object SignUpRequest {
-  given OFormat[SignUpRequest] = Json.format[SignUpRequest]
+  given Reads[SignUpRequest]   = Json.reads[SignUpRequest]
+  given OWrites[SignUpRequest] = Json.writes[SignUpRequest]
 }

@@ -77,7 +77,7 @@ class EtmpSubscriptionConnectorSpec
           .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic sometoken"))
           .withHeader("X-Transmitting-System", equalTo("HIP"))
           .withHeader("X-Originating-System", equalTo("MDTP"))
-          .withHeader("correlationid", matching("[0-9a-fA-F-]{36}"))
+          .withHeader("X-Correlation-Id", matching("[0-9a-fA-F-]{36}"))
           .withHeader("X-Receipt-Date", matching("\\d{4}-\\d{2}-\\d{2}T.*Z"))
           .withRequestBody(equalToJson(Json.stringify(Json.toJson(request))))
           .willReturn(
