@@ -1,6 +1,6 @@
 # microservice specific routes
 
 ###
-#  summary: Hello world endpoint
+#  summary: Sign up with ETMP
 ###
-GET        /hello-world             uk.gov.hmrc.senioraccountingofficerregistration.controllers.MicroserviceHelloWorldController.hello
+POST       /sign-up                 uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUp

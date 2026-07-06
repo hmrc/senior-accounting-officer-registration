@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.config
+package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import com.google.inject.AbstractModule
+import play.api.libs.json.{Json, OFormat}
 
-import java.time.{Clock, ZoneId}
+final case class SignUpResponse(saoSubscriptionId: String)
 
-class Module extends AbstractModule {
-
-  override def configure(): Unit = {
-
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[Clock]).toInstance(Clock.system(ZoneId.of("Europe/London")))
-  }
+object SignUpResponse {
+  given OFormat[SignUpResponse] = Json.format[SignUpResponse]
 }

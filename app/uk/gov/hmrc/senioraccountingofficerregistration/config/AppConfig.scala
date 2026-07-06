@@ -17,11 +17,26 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.config
 
 import play.api.Configuration
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class AppConfig @Inject() (config: Configuration) {
+class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration) {
 
   val appName: String = config.get[String]("appName")
+
+  val etmpSubscriptionUrl: String =
+    s"${servicesConfig.baseUrl("hip")}/sign-up"
+
+  private val hipClientId: String =
+    config.get[String]("microservice.services.hip.clientId")
+
+  private val hipClientSecret: String =
+    config.get[String]("microservice.services.hip.secret")
+
+  val etmpSubscriptionAuthorization: String =
+    s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
 }

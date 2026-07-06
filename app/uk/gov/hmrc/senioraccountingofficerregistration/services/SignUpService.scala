@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.config
+package uk.gov.hmrc.senioraccountingofficerregistration.services
 
-import com.google.inject.AbstractModule
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EtmpSubscriptionConnector
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
 
-import java.time.{Clock, ZoneId}
+import scala.concurrent.Future
 
-class Module extends AbstractModule {
+import javax.inject.{Inject, Singleton}
 
-  override def configure(): Unit = {
+@Singleton
+class SignUpService @Inject() (etmpSubscriptionConnector: EtmpSubscriptionConnector) {
 
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[Clock]).toInstance(Clock.system(ZoneId.of("Europe/London")))
-  }
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
+    etmpSubscriptionConnector.signUp(signUpRequest)
 }
