@@ -31,11 +31,8 @@ class SignUpService @Inject() (
 )(using ExecutionContext) {
 
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
-    etmpSubscriptionConnector
-      .signUp(signUpRequest)
-      .flatMap { signUpResponse =>
-        taxEnrolmentsConnector
-          .enrol(TaxEnrolmentRequest.dsao(signUpRequest, signUpResponse))
-          .map(_ => signUpResponse)
-      }
+    for {
+      signUpResponse <- etmpSubscriptionConnector.signUp(signUpRequest)
+      _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest.dsao(signUpRequest, signUpResponse))
+    } yield signUpResponse
 }
