@@ -26,7 +26,7 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EtmpSubscriptionConnector
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
@@ -38,12 +38,13 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private val actorSystem        = ActorSystem("SignUpControllerSpec")
   private given ActorSystem      = actorSystem
 
-  private val signUpRequest  = SignUpRequest("UTR", "1234567890")
+  private val signUpRequest  = SignUpRequest("UTR", "1234567890", "1234567890", "AB123456")
   private val signUpResponse = SignUpResponse("SAOABC123456")
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
+  private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
 
-  private val signUpService = new SignUpService(etmpSubscriptionConnector) {
+  private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector) {
     override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
       request shouldBe signUpRequest
       Future.successful(signUpResponse)
