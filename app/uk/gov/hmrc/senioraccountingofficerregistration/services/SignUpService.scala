@@ -17,16 +17,25 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.services
 
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EtmpSubscriptionConnector
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse, TaxEnrolmentRequest}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class SignUpService @Inject() (etmpSubscriptionConnector: EtmpSubscriptionConnector) {
+class SignUpService @Inject() (
+    etmpSubscriptionConnector: EtmpSubscriptionConnector,
+    taxEnrolmentsConnector: TaxEnrolmentsConnector
+)(using ExecutionContext) {
 
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
-    etmpSubscriptionConnector.signUp(signUpRequest)
+    etmpSubscriptionConnector
+      .signUp(signUpRequest)
+      .flatMap { signUpResponse =>
+        taxEnrolmentsConnector
+          .enrol(TaxEnrolmentRequest.dsao(signUpRequest, signUpResponse))
+          .map(_ => signUpResponse)
+      }
 }

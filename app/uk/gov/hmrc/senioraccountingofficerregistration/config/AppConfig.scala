@@ -31,6 +31,9 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
   val etmpSubscriptionUrl: String =
     s"${servicesConfig.baseUrl("hip")}/sign-up"
 
+  val taxEnrolmentsDsaoEnrolmentUrl: String =
+    s"${servicesConfig.baseUrl("tax-enrolments")}/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"
+
   private val hipClientId: String =
     config.get[String]("microservice.services.hip.clientId")
 
