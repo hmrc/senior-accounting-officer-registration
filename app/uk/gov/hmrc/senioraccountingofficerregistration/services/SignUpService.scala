@@ -33,6 +33,6 @@ class SignUpService @Inject() (
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
     for {
       signUpResponse <- etmpSubscriptionConnector.signUp(signUpRequest)
-      _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest.dsao(signUpRequest, signUpResponse))
+      _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, signUpResponse))
     } yield signUpResponse
 }

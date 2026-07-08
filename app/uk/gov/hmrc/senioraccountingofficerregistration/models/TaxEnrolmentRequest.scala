@@ -36,7 +36,7 @@ object TaxEnrolmentRequest {
 
   given OFormat[TaxEnrolmentRequest] = Json.format[TaxEnrolmentRequest]
 
-  def dsao(signUpRequest: SignUpRequest, signUpResponse: SignUpResponse): TaxEnrolmentRequest =
+  def apply(signUpRequest: SignUpRequest, signUpResponse: SignUpResponse): TaxEnrolmentRequest =
     TaxEnrolmentRequest(
       identifiers = Seq(TaxEnrolmentKnownFact(etmpSubscriptionId, signUpResponse.saoSubscriptionId)),
       verifiers = Seq(

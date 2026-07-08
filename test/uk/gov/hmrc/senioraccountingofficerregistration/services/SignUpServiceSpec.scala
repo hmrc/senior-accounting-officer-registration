@@ -23,18 +23,19 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with TestData {
 
   private given ExecutionContext = ExecutionContext.global
   private given HeaderCarrier    = HeaderCarrier()
 
-  private val signUpRequest  = SignUpRequest("UTR", "1234567890", "1234567890", "AB123456")
-  private val signUpResponse = SignUpResponse("SAOABC123456789")
+  private val signUpRequest  = generatedSignUpRequest(seed = 1)
+  private val signUpResponse = generatedSignUpResponse(seed = 4)
 
   "signUp" should {
     "call tax-enrolments with DSAO known facts after ETMP succeeds" in {
@@ -54,10 +55,10 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures {
       verify(taxEnrolmentsConnector).enrol(enrolmentCaptor.capture())(using anyArg[HeaderCarrier])
       enrolmentCaptor.getValue shouldBe
         TaxEnrolmentRequest(
-          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", "SAOABC123456789")),
+          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", signUpResponse.saoSubscriptionId)),
           verifiers = Seq(
-            TaxEnrolmentKnownFact("CTUTR", "1234567890"),
-            TaxEnrolmentKnownFact("CRN", "AB123456")
+            TaxEnrolmentKnownFact("CTUTR", signUpRequest.ctutr),
+            TaxEnrolmentKnownFact("CRN", signUpRequest.crn)
           )
         )
     }

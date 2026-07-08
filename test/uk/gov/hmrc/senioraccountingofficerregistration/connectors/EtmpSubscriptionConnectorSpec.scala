@@ -30,7 +30,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 
 class EtmpSubscriptionConnectorSpec
     extends AnyWordSpec
@@ -38,7 +38,8 @@ class EtmpSubscriptionConnectorSpec
     with ScalaFutures
     with IntegrationPatience
     with GuiceOneAppPerSuite
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with TestData {
 
   private val wireMockServer = WireMockServer(options().dynamicPort())
 
@@ -68,8 +69,8 @@ class EtmpSubscriptionConnectorSpec
 
   "signUp" should {
     "post the sign-up request to ETMP and return the subscription ID" in {
-      val request  = SignUpRequest("UTR", "1234567890", "1234567890", "AB123456")
-      val response = SignUpResponse("SAOABC123456")
+      val request  = generatedSignUpRequest(seed = 1)
+      val response = generatedSignUpResponse(seed = 4)
 
       val expectedEtmpRequest = Json.obj(
         "idType"   -> request.idType,
