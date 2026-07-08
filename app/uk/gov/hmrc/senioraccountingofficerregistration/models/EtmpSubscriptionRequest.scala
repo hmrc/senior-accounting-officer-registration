@@ -18,8 +18,8 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class SignUpRequest(idType: String, idNumber: String, ctutr: String, crn: String)
+final case class EtmpSubscriptionRequest(idType: String, idNumber: String)
 
-object SignUpRequest {
-  given OFormat[SignUpRequest] = Json.format[SignUpRequest]
+object EtmpSubscriptionRequest {
+  given OFormat[EtmpSubscriptionRequest] = Json.format[EtmpSubscriptionRequest]
 }

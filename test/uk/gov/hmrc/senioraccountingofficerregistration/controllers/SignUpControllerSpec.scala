@@ -26,24 +26,26 @@ import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EtmpSubscriptionConnector
+import uk.gov.hmrc.senioraccountingofficerregistration.TestData
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll with TestData {
 
   private given ExecutionContext = ExecutionContext.global
   private val actorSystem        = ActorSystem("SignUpControllerSpec")
   private given ActorSystem      = actorSystem
 
-  private val signUpRequest  = SignUpRequest("UTR", "1234567890")
-  private val signUpResponse = SignUpResponse("SAOABC123456")
+  private val signUpRequest  = generatedSignUpRequest(seed = 1)
+  private val signUpResponse = generatedSignUpResponse(seed = 4)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
+  private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
 
-  private val signUpService = new SignUpService(etmpSubscriptionConnector) {
+  private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector) {
     override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
       request shouldBe signUpRequest
       Future.successful(signUpResponse)
