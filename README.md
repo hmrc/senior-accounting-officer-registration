@@ -35,6 +35,15 @@ This repository utilises [play-swagger](https://github.com/play-swagger/play-swa
 
 The schema is generated upon running `sbt run`. It can be found in `/target/swagger/swagger.json` from the root of the repository.
 
-### License
+### Viewing the Schema
+
+The schema is served from `http://localhost:10059/swagger`.
+
+You can view the docs by:
+* running `sm2 -start DEVHUB_PREVIEW_OPENAPI`
+* accessing http://localhost:9680/api-documentation/docs/openapi/preview in a web browser
+* Providing the URL `http://localhost:10059/swagger` and submitting the form
+
+## License
 
 This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html").
