@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration
 
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, Success}
 
 import scala.util.Random
 
@@ -36,6 +36,8 @@ trait TestData {
       crn = crn(seed + 2)
     )
 
-  protected def generatedSignUpResponse(seed: Int): SignUpResponse =
-    SignUpResponse(s"SAOABC${crn(seed)}")
+  protected def generatedSignUpResponse(seed: Int): EtmpSuccessResponse =
+    EtmpSuccessResponse(
+      Success(s"SAOABC${crn(seed)}")
+    )
 }
