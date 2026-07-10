@@ -1,0 +1,2 @@
+### NoDocs ###
+GET        /swagger        controllers.Assets.versioned(file="swagger.json")
