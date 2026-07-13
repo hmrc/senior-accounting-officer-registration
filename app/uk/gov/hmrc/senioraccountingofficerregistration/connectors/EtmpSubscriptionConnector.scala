@@ -33,6 +33,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{
 import scala.concurrent.{ExecutionContext, Future}
 
 import java.time.Clock
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -50,7 +51,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
         "CorrelationId"           -> UUID.randomUUID().toString,
-        "X-Receipt-Date"          -> "2026-01-31T09:26:17Z"
+        "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
       )
       .execute[HttpResponse]
       .map {
