@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
-import play.api.http.HeaderNames
 import play.api.libs.json.Json
 import play.api.libs.ws.writeableOf_JsValue
 import uk.gov.hmrc.http.*
@@ -26,6 +25,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
 import uk.gov.hmrc.senioraccountingofficerregistration.models.TaxEnrolmentRequest
 
 import scala.concurrent.{ExecutionContext, Future}
+
 import javax.inject.{Inject, Singleton}
 
 @Singleton
@@ -39,7 +39,6 @@ class TaxEnrolmentsConnector @Inject() (httpClient: HttpClientV2, appConfig: App
       .map {
         case response if response.status >= 200 && response.status < 300 => ()
         case response                                                    =>
-          println("RESPONSE: " + response.body)
           throw UpstreamErrorResponse(
             s"Tax enrolments API returned ${response.status}",
             response.status

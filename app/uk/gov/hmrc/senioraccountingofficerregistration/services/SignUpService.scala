@@ -21,6 +21,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscript
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, TaxEnrolmentRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
+
 import javax.inject.{Inject, Singleton}
 
 @Singleton

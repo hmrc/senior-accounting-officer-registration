@@ -18,10 +18,11 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models
 
 import play.api.libs.json.{Format, Json, OFormat}
 
-final case class EtmpSuccessResponse(
-    success: Success
+final case class Success(
+    processingDate: String,
+    dsaoIdNumber: String
 )
 
-object EtmpSuccessResponse {
-  given Format[EtmpSuccessResponse] = Json.format[EtmpSuccessResponse]
+object Success {
+  given Format[Success] = Json.format[Success]
 }

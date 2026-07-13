@@ -39,7 +39,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private val actorSystem        = ActorSystem("SignUpControllerSpec")
   private given ActorSystem      = actorSystem
 
-  private val signUpRequest  = generatedSignUpRequest(seed = 1)
+  private val signUpRequest       = generatedSignUpRequest(seed = 1)
   private val etmpSuccessResponse = generatedSignUpResponse(seed = 4)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
@@ -69,7 +69,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       )
 
       status(result) shouldBe Status.CREATED
-      (contentAsJson(result) \ "saoSubscriptionId").as[String] shouldBe etmpSuccessResponse.success.dsaoIdNumber
+      (contentAsJson(result) \ "success" \ "dsaoIdNumber").as[String] shouldBe etmpSuccessResponse.success.dsaoIdNumber
     }
 
     "return 400 for an invalid request body" in {

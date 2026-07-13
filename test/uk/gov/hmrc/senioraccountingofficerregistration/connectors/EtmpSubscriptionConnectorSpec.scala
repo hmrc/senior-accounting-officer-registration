@@ -78,7 +78,7 @@ class EtmpSubscriptionConnectorSpec
       )
 
       wireMockServer.stubFor(
-        post(urlEqualTo("/sign-up"))
+        post(urlEqualTo("/RESTAdapter/dsao/subscription"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
           .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic c29tZS1jbGllbnQtaWQ6c29tZS1jbGllbnQtc2VjcmV0"))
           .withHeader("X-Transmitting-System", equalTo("HIP"))

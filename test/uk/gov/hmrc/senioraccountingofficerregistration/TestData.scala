@@ -38,6 +38,9 @@ trait TestData {
 
   protected def generatedSignUpResponse(seed: Int): EtmpSuccessResponse =
     EtmpSuccessResponse(
-      Success(s"SAOABC${crn(seed)}")
+      Success(
+        processingDate = "example date",
+        dsaoIdNumber = s"SAOABC${crn(seed)}"
+      )
     )
 }
