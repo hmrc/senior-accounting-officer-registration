@@ -31,6 +31,9 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
   val etmpSubscriptionUrl: String =
     s"${servicesConfig.baseUrl("hip")}/RESTAdapter/dsao/subscription"
 
+  val dpsReplaceSaoSubscriptionUrl: String =
+    s"${servicesConfig.baseUrl("hip")}/subscriptions/"
+
   val taxEnrolmentsDsaoEnrolmentUrl: String =
     s"${servicesConfig.baseUrl("tax-enrolments")}/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"
 
@@ -41,5 +44,8 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
     config.get[String]("microservice.services.hip.secret")
 
   val etmpSubscriptionAuthorization: String =
+    s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
+    
+  val dpsReplacementSaoSubscriptionAuthorization: String =
     s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
 }
