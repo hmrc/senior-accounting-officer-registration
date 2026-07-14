@@ -33,7 +33,6 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{
 import scala.concurrent.{ExecutionContext, Future}
 
 import java.time.Clock
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 

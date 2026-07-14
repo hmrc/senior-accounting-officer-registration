@@ -17,7 +17,7 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
 import play.api.http.HeaderNames
-import play.api.http.Status.{CREATED, NO_CONTENT}
+import play.api.http.Status.CREATED
 import play.api.libs.json.Json
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.*
@@ -26,6 +26,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{ReplaceSaoSubscriptionRequest, SignUpRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
+
 import java.time.Clock
 import javax.inject.{Inject, Singleton}
 
