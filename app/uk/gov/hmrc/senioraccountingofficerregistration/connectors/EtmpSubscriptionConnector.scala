@@ -51,7 +51,8 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
         "CorrelationId"           -> UUID.randomUUID().toString,
-        "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
+//        "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
+        "X-Receipt-Date" -> "2026-05-05T12:05:45Z"
       )
       .execute[HttpResponse]
       .map {

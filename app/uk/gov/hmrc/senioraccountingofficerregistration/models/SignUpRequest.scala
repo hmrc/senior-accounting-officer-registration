@@ -18,9 +18,15 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class SignUpRequest(etmpSafeId: String, nominatedCompany: NominatedCompany, 
-                               contacts: List[Contact],  idType: String, idNumber: String, ctutr: String, crn: String)
-
+final case class SignUpRequest(
+    etmpSafeId: String,
+    nominatedCompany: NominatedCompany,
+    contacts: List[Contact],
+    idType: String,
+    idNumber: String,
+    ctutr: String,
+    crn: String
+)
 
 object SignUpRequest {
   given OFormat[SignUpRequest] = Json.format[SignUpRequest]

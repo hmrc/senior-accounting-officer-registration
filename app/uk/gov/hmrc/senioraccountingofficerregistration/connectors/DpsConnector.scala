@@ -17,8 +17,10 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
 import play.api.http.HeaderNames
+import play.api.http.Status.{CREATED, NO_CONTENT}
 import play.api.libs.json.Json
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
+import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{ReplaceSaoSubscriptionRequest, SignUpRequest}
@@ -30,14 +32,25 @@ import javax.inject.{Inject, Singleton}
 @Singleton
 class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig, clock: Clock)(using ExecutionContext) {
 
-  
-  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest)(using HeaderCarrier): Future[Any] = {
-      val replaceRequest: ReplaceSaoSubscriptionRequest = ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
-      httpClient.put(url"${appConfig.dpsReplaceSaoSubscriptionUrl}/${saoSubscriptionId}")
-        .setHeader(
-          HeaderNames.AUTHORIZATION -> appConfig.dpsReplacementSaoSubscriptionAuthorization
-        )
-        .withBody(Json.toJson(replaceRequest)).exe
-// Future("A")
+  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest)(using
+      HeaderCarrier
+  ): Future[Unit] = {
+    val replaceRequest: ReplaceSaoSubscriptionRequest =
+      ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+    httpClient
+      .put(url"${appConfig.dpsReplaceSaoSubscriptionUrl}/${saoSubscriptionId}")
+      .setHeader(
+        HeaderNames.AUTHORIZATION -> appConfig.dpsReplacementSaoSubscriptionAuthorization
+      )
+      .withBody(Json.toJson(replaceRequest))
+      .execute[HttpResponse]
+      .map {
+        case response if response.status == CREATED => ()
+        case response                               =>
+          throw UpstreamErrorResponse(
+            s"DPS api returned ${response.status}",
+            response.status
+          )
+      }
   }
 }

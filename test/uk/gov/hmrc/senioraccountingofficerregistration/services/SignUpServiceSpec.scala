@@ -24,7 +24,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
-import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
+  DpsConnector,
+  EtmpSubscriptionConnector,
+  TaxEnrolmentsConnector
+}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,24 +38,28 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   private given ExecutionContext = ExecutionContext.global
   private given HeaderCarrier    = HeaderCarrier()
 
-  private val signUpRequest  = generatedSignUpRequest(seed = 1)
+  private val signUpRequest  = generateSignUpRequest(seed = 1)
   private val signUpResponse = generatedSignUpResponse(seed = 4)
 
   "signUp" should {
-    "call tax-enrolments with DSAO known facts after ETMP succeeds" in {
+    "call tax-enrolments with DSAO known facts after ETMP and DPS succeeds" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
       val enrolmentCaptor        = ArgumentCaptor.forClass(classOf[TaxEnrolmentRequest])
 
       when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(signUpResponse))
+      when(dpsConnector.replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
       when(taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
       service.signUp(signUpRequest).futureValue shouldBe signUpResponse
 
       verify(etmpConnector).signUp(signUpRequest)
+      verify(dpsConnector).replaceSaoSubscription(signUpResponse.success.dsaoIdNumber, signUpRequest)
       verify(taxEnrolmentsConnector).enrol(enrolmentCaptor.capture())(using anyArg[HeaderCarrier])
       enrolmentCaptor.getValue shouldBe
         TaxEnrolmentRequest(
@@ -63,10 +71,41 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         )
     }
 
+    "not call DPS after ETMP fails" in {
+      val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
+      val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
+
+      when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("ETMP failed", 500)))
+
+      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+
+      verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
+        anyArg[HeaderCarrier]
+      )
+    }
+
+    "not call tax-enrolments when DPS fails" in {
+      val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
+      val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
+
+      when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.successful(signUpResponse))
+      when(dpsConnector.replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.failed(UpstreamErrorResponse("DPS failed", 500)))
+
+      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      verify(taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
+    }
     "not call tax-enrolments when ETMP fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("ETMP failed", 500)))
@@ -79,10 +118,13 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
     "fail when tax-enrolments fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(signUpResponse))
+      when(dpsConnector.replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.successful(()))
       when(taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("tax-enrolments failed", 500)))
 

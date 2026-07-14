@@ -45,7 +45,7 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
 
   val etmpSubscriptionAuthorization: String =
     s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
-    
+
   val dpsReplacementSaoSubscriptionAuthorization: String =
     s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
 }
