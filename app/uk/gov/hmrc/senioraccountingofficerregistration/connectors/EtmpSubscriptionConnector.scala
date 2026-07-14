@@ -24,7 +24,11 @@ import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSubscriptionRequest, SignUpRequest, SignUpResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{
+  EtmpSubscriptionRequest,
+  EtmpSuccessResponse,
+  SignUpRequest
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -38,7 +42,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
     ExecutionContext
 ) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
       .withBody(Json.toJson(EtmpSubscriptionRequest(signUpRequest.idType, signUpRequest.idNumber)))
@@ -51,7 +55,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
       )
       .execute[HttpResponse]
       .map {
-        case response if response.status == CREATED => response.json.as[SignUpResponse]
+        case response if response.status == CREATED => response.json.as[EtmpSuccessResponse]
         case response                               =>
           throw UpstreamErrorResponse(
             s"ETMP subscription API returned ${response.status}",

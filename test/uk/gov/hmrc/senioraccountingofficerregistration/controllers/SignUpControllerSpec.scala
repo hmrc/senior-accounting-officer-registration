@@ -28,7 +28,7 @@ import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,16 +39,16 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private val actorSystem        = ActorSystem("SignUpControllerSpec")
   private given ActorSystem      = actorSystem
 
-  private val signUpRequest  = generatedSignUpRequest(seed = 1)
-  private val signUpResponse = generatedSignUpResponse(seed = 4)
+  private val signUpRequest       = generatedSignUpRequest(seed = 1)
+  private val etmpSuccessResponse = generatedSignUpResponse(seed = 4)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
 
   private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector) {
-    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
+    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] = {
       request shouldBe signUpRequest
-      Future.successful(signUpResponse)
+      Future.successful(etmpSuccessResponse)
     }
   }
 
@@ -69,7 +69,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       )
 
       status(result) shouldBe Status.CREATED
-      (contentAsJson(result) \ "saoSubscriptionId").as[String] shouldBe signUpResponse.saoSubscriptionId
+      (contentAsJson(result) \ "success" \ "dsaoIdNumber").as[String] shouldBe etmpSuccessResponse.success.dsaoIdNumber
     }
 
     "return 400 for an invalid request body" in {

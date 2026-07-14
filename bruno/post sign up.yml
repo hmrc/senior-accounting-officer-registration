@@ -1,0 +1,26 @@
+info:
+  name: post sign up
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:10059/senior-accounting-officer-registration/sign-up
+  body:
+    type: json
+    data: |-
+      {
+        "idType": "UTR",
+        "idNumber": "2233445566",
+        "ctutr": "2233445567",
+        "crn": "11223344"
+      }
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -18,7 +18,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.services
 
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse, TaxEnrolmentRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, TaxEnrolmentRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,7 +30,7 @@ class SignUpService @Inject() (
     taxEnrolmentsConnector: TaxEnrolmentsConnector
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] =
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] =
     for {
       signUpResponse <- etmpSubscriptionConnector.signUp(signUpRequest)
       _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, signUpResponse))

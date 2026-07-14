@@ -55,7 +55,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verify(taxEnrolmentsConnector).enrol(enrolmentCaptor.capture())(using anyArg[HeaderCarrier])
       enrolmentCaptor.getValue shouldBe
         TaxEnrolmentRequest(
-          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", signUpResponse.saoSubscriptionId)),
+          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", signUpResponse.success.dsaoIdNumber)),
           verifiers = Seq(
             TaxEnrolmentKnownFact("CTUTR", signUpRequest.ctutr),
             TaxEnrolmentKnownFact("CRN", signUpRequest.crn)

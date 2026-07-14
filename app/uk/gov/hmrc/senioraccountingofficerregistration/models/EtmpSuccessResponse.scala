@@ -16,10 +16,12 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{Format, Json, OFormat}
 
-final case class SignUpResponse(saoSubscriptionId: String)
+final case class EtmpSuccessResponse(
+    success: Success
+)
 
-object SignUpResponse {
-  given OFormat[SignUpResponse] = Json.format[SignUpResponse]
+object EtmpSuccessResponse {
+  given Format[EtmpSuccessResponse] = Json.format[EtmpSuccessResponse]
 }
