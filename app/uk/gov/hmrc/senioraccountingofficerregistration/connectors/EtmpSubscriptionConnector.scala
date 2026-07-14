@@ -33,6 +33,8 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{
 import scala.concurrent.{ExecutionContext, Future}
 
 import java.time.Clock
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -50,8 +52,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
         "CorrelationId"           -> UUID.randomUUID().toString,
-//        "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
-        "X-Receipt-Date" -> "2026-05-05T12:05:45Z"
+        "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(clock.instant().truncatedTo(ChronoUnit.SECONDS))
       )
       .execute[HttpResponse]
       .map {

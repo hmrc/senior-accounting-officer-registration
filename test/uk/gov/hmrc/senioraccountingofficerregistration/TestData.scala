@@ -49,7 +49,7 @@ trait TestData {
     )
   }
 
-  protected def generatedSignUpResponse(seed: Int): EtmpSuccessResponse =
+  protected def generateSignUpResponse(seed: Int): EtmpSuccessResponse =
     EtmpSuccessResponse(
       Success(
         processingDate = "example date",

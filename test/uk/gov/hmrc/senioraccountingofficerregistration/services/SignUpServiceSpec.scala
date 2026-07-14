@@ -39,7 +39,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   private given HeaderCarrier    = HeaderCarrier()
 
   private val signUpRequest  = generateSignUpRequest(seed = 1)
-  private val signUpResponse = generatedSignUpResponse(seed = 4)
+  private val signUpResponse = generateSignUpResponse(seed = 4)
 
   "signUp" should {
     "call tax-enrolments with DSAO known facts after ETMP and DPS succeeds" in {

@@ -28,7 +28,7 @@ object ReplaceSaoSubscriptionRequest {
   given OFormat[ReplaceSaoSubscriptionRequest] = Json.format[ReplaceSaoSubscriptionRequest]
 }
 
-final case class NominatedCompany(name: String, UTR: String, CRN: String)
+final case class NominatedCompany(name: String, utr: String, crn: String)
 
 object NominatedCompany {
   given OFormat[NominatedCompany] = Json.format[NominatedCompany]

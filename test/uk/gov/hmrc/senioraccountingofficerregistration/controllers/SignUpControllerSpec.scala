@@ -44,7 +44,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private given ActorSystem      = actorSystem
 
   private val signUpRequest       = generateSignUpRequest(seed = 1)
-  private val etmpSuccessResponse = generatedSignUpResponse(seed = 4)
+  private val etmpSuccessResponse = generateSignUpResponse(seed = 4)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])

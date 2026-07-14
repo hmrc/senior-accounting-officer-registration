@@ -70,7 +70,7 @@ class EtmpSubscriptionConnectorSpec
   "signUp" should {
     "post the sign-up request to ETMP and return the subscription ID" in {
       val request  = generateSignUpRequest(seed = 1)
-      val response = generatedSignUpResponse(seed = 4)
+      val response = generateSignUpResponse(seed = 4)
 
       val expectedEtmpRequest = Json.obj(
         "idType"   -> request.idType,
