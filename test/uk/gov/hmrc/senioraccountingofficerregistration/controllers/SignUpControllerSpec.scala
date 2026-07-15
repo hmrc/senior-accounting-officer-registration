@@ -27,7 +27,11 @@ import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
-import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{EtmpSubscriptionConnector, TaxEnrolmentsConnector}
+import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
+  DpsConnector,
+  EtmpSubscriptionConnector,
+  TaxEnrolmentsConnector
+}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
@@ -39,13 +43,14 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private val actorSystem        = ActorSystem("SignUpControllerSpec")
   private given ActorSystem      = actorSystem
 
-  private val signUpRequest       = generatedSignUpRequest(seed = 1)
-  private val etmpSuccessResponse = generatedSignUpResponse(seed = 4)
+  private val signUpRequest       = generateSignUpRequest(seed = 1)
+  private val etmpSuccessResponse = generateSignUpResponse(seed = 4)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
+  private val dpsConnector              = mock(classOf[DpsConnector])
 
-  private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector) {
+  private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector, dpsConnector) {
     override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] = {
       request shouldBe signUpRequest
       Future.successful(etmpSuccessResponse)

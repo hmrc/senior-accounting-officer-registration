@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration
 
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, Success}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 
 import scala.util.Random
 
@@ -28,15 +28,28 @@ trait TestData {
   protected def crn(seed: Int): String =
     f"${new Random(seed).nextLong(100000000L)}%08d"
 
-  protected def generatedSignUpRequest(seed: Int): SignUpRequest =
+  protected def generateContacts(): List[Contact] =
+    List(
+      Contact("contact 1", "contact1@example.com", "status"),
+      Contact("contact 2", "contact2@example.com", "status")
+    )
+
+  protected def generateNominatedCompany(seed: Int): NominatedCompany =
+    NominatedCompany("example company", utr(seed + 1), crn(seed + 2))
+
+  protected def generateSignUpRequest(seed: Int): SignUpRequest = {
     SignUpRequest(
+      etmpSafeId = "etmpSafeId",
+      contacts = generateContacts(),
+      nominatedCompany = generateNominatedCompany(seed),
       idType = "UTR",
       idNumber = utr(seed),
       ctutr = utr(seed + 1),
       crn = crn(seed + 2)
     )
+  }
 
-  protected def generatedSignUpResponse(seed: Int): EtmpSuccessResponse =
+  protected def generateSignUpResponse(seed: Int): EtmpSuccessResponse =
     EtmpSuccessResponse(
       Success(
         processingDate = "example date",

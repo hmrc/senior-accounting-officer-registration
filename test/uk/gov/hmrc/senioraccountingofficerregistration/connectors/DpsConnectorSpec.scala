@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,12 +27,13 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
-import uk.gov.hmrc.http.HeaderCarrier
+import play.api.libs.json.{JsObject, Json}
+import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
+import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscriptionRequest
 
-class EtmpSubscriptionConnectorSpec
+class DpsConnectorSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
@@ -65,36 +66,39 @@ class EtmpSubscriptionConnectorSpec
 
   private given HeaderCarrier = HeaderCarrier()
 
-  private lazy val connector = app.injector.instanceOf[EtmpSubscriptionConnector]
+  private lazy val connector = app.injector.instanceOf[DpsConnector]
 
-  "signUp" should {
-    "post the sign-up request to ETMP and return the subscription ID" in {
-      val request  = generateSignUpRequest(seed = 1)
-      val response = generateSignUpResponse(seed = 4)
-
-      val expectedEtmpRequest = Json.obj(
-        "idType"   -> request.idType,
-        "idNumber" -> request.idNumber
-      )
+  "replaceSaoSubscription" should {
+    "return 201 with empty payload" in {
+      val signUpRequest                 = generateSignUpRequest(2)
+      val replaceSaoSubscriptionRequest =
+        ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+      val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
+      val subscriptionId        = "123"
 
       wireMockServer.stubFor(
-        post(urlEqualTo("/RESTAdapter/dsao/subscription"))
+        put(s"/subscriptions/${subscriptionId}")
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic c29tZS1jbGllbnQtaWQ6c29tZS1jbGllbnQtc2VjcmV0"))
-          .withHeader("X-Transmitting-System", equalTo("HIP"))
-          .withHeader("X-Originating-System", equalTo("MDTP"))
-          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
-          .withHeader("X-Receipt-Date", matching("\\d{4}-\\d{2}-\\d{2}T.*Z"))
-          .withRequestBody(equalToJson(Json.stringify(expectedEtmpRequest)))
-          .willReturn(
-            aResponse()
-              .withStatus(Status.CREATED)
-              .withHeader(HeaderNames.CONTENT_TYPE, MimeTypes.JSON)
-              .withBody(Json.stringify(Json.toJson(response)))
-          )
+          .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
+          .willReturn(aResponse().withStatus(Status.CREATED))
       )
-
-      connector.signUp(request).futureValue shouldBe response
+      connector.replaceSaoSubscription(subscriptionId, signUpRequest).futureValue shouldBe ()
     }
+  }
+
+  "fail when DPS returns a non 201 response" in {
+    val signUpRequest                 = generateSignUpRequest(2)
+    val replaceSaoSubscriptionRequest =
+      ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+    val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
+    val subscriptionId        = "456"
+
+    wireMockServer.stubFor(
+      put(s"/subscriptions/${subscriptionId}")
+        .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+        .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
+        .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
+    )
+    connector.replaceSaoSubscription(subscriptionId, signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
   }
 }

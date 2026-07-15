@@ -34,6 +34,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import java.time.Clock
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -51,7 +52,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
         "CorrelationId"           -> UUID.randomUUID().toString,
-        "X-Receipt-Date"          -> DateTimeFormatter.ISO_INSTANT.format(clock.instant())
+        "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(clock.instant().truncatedTo(ChronoUnit.SECONDS))
       )
       .execute[HttpResponse]
       .map {
