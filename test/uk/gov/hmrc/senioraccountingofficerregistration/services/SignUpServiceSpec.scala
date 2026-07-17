@@ -121,8 +121,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
     "not call tax-enrolments when ETMP fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val dpsConnector           = mock(classOf[DpsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("ETMP failed", 500)))
@@ -135,8 +134,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
     "fail when tax-enrolments fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val dpsConnector           = mock(classOf[DpsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(etmpSuccessResponse))
