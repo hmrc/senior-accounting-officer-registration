@@ -33,6 +33,6 @@ class SignUpController @Inject() (cc: ControllerComponents, signUpService: SignU
   def signUp: Action[SignUpRequest] = Action.async(parse.json[SignUpRequest]) { implicit request =>
     signUpService
       .signUp(request.body)
-      .map(signUpResponse => Created(Json.toJson(signUpResponse)))
+      .map(signUpResponse => Ok(Json.toJson(signUpResponse)))
   }
 }

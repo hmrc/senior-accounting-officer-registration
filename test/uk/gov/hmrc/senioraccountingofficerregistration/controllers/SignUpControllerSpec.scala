@@ -32,7 +32,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   EtmpSubscriptionConnector,
   TaxEnrolmentsConnector
 }
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,16 +44,17 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private given ActorSystem      = actorSystem
 
   private val signUpRequest       = generateSignUpRequest(seed = 1)
-  private val etmpSuccessResponse = generateSignUpResponse(seed = 4)
+  private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
+  private val signUpResponse      = SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
   private val dpsConnector              = mock(classOf[DpsConnector])
 
   private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector, dpsConnector) {
-    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] = {
+    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
       request shouldBe signUpRequest
-      Future.successful(etmpSuccessResponse)
+      Future.successful(signUpResponse)
     }
   }
 
@@ -65,7 +66,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   }
 
   "POST /sign-up" should {
-    "return 201 with the subscription ID returned by ETMP" in {
+    "return 200 with the subscription ID returned by ETMP" in {
       val result = call(
         controller.signUp,
         FakeRequest("POST", "/sign-up")
@@ -73,8 +74,8 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
           .withJsonBody(Json.toJson(signUpRequest))
       )
 
-      status(result) shouldBe Status.CREATED
-      (contentAsJson(result) \ "success" \ "dsaoIdNumber").as[String] shouldBe etmpSuccessResponse.success.dsaoIdNumber
+      status(result) shouldBe Status.OK
+      contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
     }
 
     "return 400 for an invalid request body" in {

@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
+import play.api.Logging
 import play.api.http.HeaderNames
 import play.api.http.Status.CREATED
 import play.api.libs.json.Json
@@ -27,13 +28,12 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{ReplaceSaoSubscri
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import java.time.Clock
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig, clock: Clock)(using ExecutionContext) {
+class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) extends Logging {
 
-  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest)(using
+  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest, correlationId: String)(using
       HeaderCarrier
   ): Future[Unit] = {
     val replaceRequest: ReplaceSaoSubscriptionRequest =
@@ -47,11 +47,13 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig, cl
       .execute[HttpResponse]
       .map {
         case response if response.status == CREATED => ()
-        case response                               =>
+        case response                               => {
+          logger.error(s"DPS api failed with CorrelationId: $correlationId")
           throw UpstreamErrorResponse(
             s"DPS api returned ${response.status}",
             response.status
           )
+        }
       }
   }
 }

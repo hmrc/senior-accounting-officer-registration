@@ -22,10 +22,11 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   EtmpSubscriptionConnector,
   TaxEnrolmentsConnector
 }
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, TaxEnrolmentRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse, TaxEnrolmentRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 @Singleton
@@ -35,10 +36,12 @@ class SignUpService @Inject() (
     dpsConnector: DpsConnector
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] =
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
+    val correlationId = UUID.randomUUID().toString
     for {
-      signUpResponse <- etmpSubscriptionConnector.signUp(signUpRequest)
-      _              <- dpsConnector.replaceSaoSubscription(signUpResponse.success.dsaoIdNumber, signUpRequest)
-      _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, signUpResponse))
-    } yield signUpResponse
+      etmpSuccessResponse <- etmpSubscriptionConnector.signUp(signUpRequest, correlationId)
+      _ <- dpsConnector.replaceSaoSubscription(etmpSuccessResponse.success.dsaoIdNumber, signUpRequest, correlationId)
+      _ <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse))
+    } yield SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
+  }
 }
