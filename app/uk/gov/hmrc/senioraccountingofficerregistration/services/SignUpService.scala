@@ -38,8 +38,9 @@ class SignUpService @Inject() (
   def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[SignUpResponse] = {
     for {
       etmpSuccessResponse <- etmpSubscriptionConnector.signUp(signUpRequest, correlationId)
-      _ <- dpsConnector.replaceSaoSubscription(etmpSuccessResponse.success.dsaoIdNumber, signUpRequest, correlationId)
+      subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
+      _ <- dpsConnector.replaceSaoSubscription(subscriptionId, signUpRequest, correlationId)
       _ <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse))
-    } yield SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
+    } yield SignUpResponse(subscriptionId)
   }
 }

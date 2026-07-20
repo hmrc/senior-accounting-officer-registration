@@ -34,12 +34,12 @@ class SignUpController @Inject() (cc: ControllerComponents, signUpService: SignU
 
   def signUp: Action[SignUpRequest] = Action.async(parse.json[SignUpRequest]) { implicit request =>
     request.headers
-      .get("correlationid")
+      .get("CorrelationId")
       .fold(
-        Future.successful(BadRequest("correlationid header not found"))
+        Future.successful(BadRequest("CorrelationId header not found"))
       ) { header =>
         Try(UUID.fromString(header)).fold(
-          _ => Future.successful(BadRequest("invalid correlationid header")),
+          _ => Future.successful(BadRequest("Invalid CorrelationId header")),
           header =>
             signUpService
               .signUp(request.body, header.toString)

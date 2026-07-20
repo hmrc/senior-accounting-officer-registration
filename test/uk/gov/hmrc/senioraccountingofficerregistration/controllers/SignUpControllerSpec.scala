@@ -75,7 +75,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
         controller.signUp,
         FakeRequest("POST", "/sign-up")
           .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
-          .withHeaders("correlationid" -> correlationId)
+          .withHeaders("CorrelationId" -> correlationId)
           .withJsonBody(Json.toJson(signUpRequest))
       )
 
@@ -83,7 +83,7 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
     }
 
-    "return 400 with 'correlationid header not found' message" in {
+    "return 400 with 'CorrelationId header not found' message" in {
       val result = call(
         controller.signUp,
         FakeRequest("POST", "/sign-up")
@@ -92,20 +92,20 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       )
 
       status(result) shouldBe Status.BAD_REQUEST
-      contentAsString(result) shouldBe "correlationid header not found"
+      contentAsString(result) shouldBe "CorrelationId header not found"
     }
 
-    "return 400 with 'invalid correlationid header' message" in {
+    "return 400 with 'invalid CorrelationId header' message" in {
       val result = call(
         controller.signUp,
         FakeRequest("POST", "/sign-up")
           .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
-          .withHeaders("correlationid" -> "correlationId")
+          .withHeaders("CorrelationId" -> "CorrelationId")
           .withJsonBody(Json.toJson(signUpRequest))
       )
 
       status(result) shouldBe Status.BAD_REQUEST
-      contentAsString(result) shouldBe "invalid correlationid header"
+      contentAsString(result) shouldBe "Invalid CorrelationId header"
     }
 
     "return 400 for an invalid request body" in {

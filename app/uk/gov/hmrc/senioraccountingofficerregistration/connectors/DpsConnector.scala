@@ -48,7 +48,7 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
       .map {
         case response if response.status == CREATED => ()
         case response                               => {
-          logger.error(s"DPS api failed with CorrelationId: $correlationId")
+          logger.error(s"DPS API failed with CorrelationId: $correlationId")
           throw UpstreamErrorResponse(
             s"DPS api returned ${response.status}",
             response.status

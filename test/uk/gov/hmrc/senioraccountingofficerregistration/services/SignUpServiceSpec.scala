@@ -70,7 +70,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
 
       verify(etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest), anyString())(using anyArg[HeaderCarrier])
       verify(dpsConnector).replaceSaoSubscription(
-        ArgumentMatchers.eq(etmpSuccessResponse.success.dsaoIdNumber),
+        ArgumentMatchers.eq(subscriptionId),
         ArgumentMatchers.eq(signUpRequest),
         anyString()
       )(using anyArg[HeaderCarrier])
