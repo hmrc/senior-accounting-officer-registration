@@ -53,6 +53,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       val dpsConnector           = mock(classOf[DpsConnector])
       val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
       val enrolmentCaptor        = ArgumentCaptor.forClass(classOf[TaxEnrolmentRequest])
+      val subscriptionId         = etmpSuccessResponse.success.dsaoIdNumber
 
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(etmpSuccessResponse))
@@ -76,7 +77,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verify(taxEnrolmentsConnector).enrol(enrolmentCaptor.capture())(using anyArg[HeaderCarrier])
       enrolmentCaptor.getValue shouldBe
         TaxEnrolmentRequest(
-          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", etmpSuccessResponse.success.dsaoIdNumber)),
+          identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", subscriptionId)),
           verifiers = Seq(
             TaxEnrolmentKnownFact("CTUTR", signUpRequest.ctutr),
             TaxEnrolmentKnownFact("CRN", signUpRequest.crn)
