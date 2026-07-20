@@ -32,10 +32,12 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   EtmpSubscriptionConnector,
   TaxEnrolmentsConnector
 }
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import java.util.UUID
 
 class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll with TestData {
 
@@ -44,16 +46,19 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private given ActorSystem      = actorSystem
 
   private val signUpRequest       = generateSignUpRequest(seed = 1)
-  private val etmpSuccessResponse = generateSignUpResponse(seed = 4)
+  private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
+  private val signUpResponse      = SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
+  private val correlationId       = UUID.randomUUID().toString
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
   private val dpsConnector              = mock(classOf[DpsConnector])
 
   private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector, dpsConnector) {
-    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] = {
+    override def signUp(request: SignUpRequest, header: String)(using HeaderCarrier): Future[SignUpResponse] = {
+      header shouldBe correlationId
       request shouldBe signUpRequest
-      Future.successful(etmpSuccessResponse)
+      Future.successful(signUpResponse)
     }
   }
 
@@ -65,7 +70,20 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   }
 
   "POST /sign-up" should {
-    "return 201 with the subscription ID returned by ETMP" in {
+    "return 200 with the subscription ID returned by ETMP" in {
+      val result = call(
+        controller.signUp,
+        FakeRequest("POST", "/sign-up")
+          .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+          .withHeaders("CorrelationId" -> correlationId)
+          .withJsonBody(Json.toJson(signUpRequest))
+      )
+
+      status(result) shouldBe Status.OK
+      contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
+    }
+
+    "return 400 with 'CorrelationId header not found' message" in {
       val result = call(
         controller.signUp,
         FakeRequest("POST", "/sign-up")
@@ -73,8 +91,21 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
           .withJsonBody(Json.toJson(signUpRequest))
       )
 
-      status(result) shouldBe Status.CREATED
-      (contentAsJson(result) \ "success" \ "dsaoIdNumber").as[String] shouldBe etmpSuccessResponse.success.dsaoIdNumber
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe "CorrelationId header not found"
+    }
+
+    "return 400 with 'invalid CorrelationId header' message" in {
+      val result = call(
+        controller.signUp,
+        FakeRequest("POST", "/sign-up")
+          .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+          .withHeaders("CorrelationId" -> "CorrelationId")
+          .withJsonBody(Json.toJson(signUpRequest))
+      )
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe "Invalid CorrelationId header"
     }
 
     "return 400 for an invalid request body" in {

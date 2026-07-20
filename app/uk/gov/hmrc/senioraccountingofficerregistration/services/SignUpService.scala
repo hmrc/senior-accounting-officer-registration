@@ -22,7 +22,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   EtmpSubscriptionConnector,
   TaxEnrolmentsConnector
 }
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest, TaxEnrolmentRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, SignUpResponse, TaxEnrolmentRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -35,10 +35,12 @@ class SignUpService @Inject() (
     dpsConnector: DpsConnector
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] =
+  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[SignUpResponse] = {
     for {
-      signUpResponse <- etmpSubscriptionConnector.signUp(signUpRequest)
-      _              <- dpsConnector.replaceSaoSubscription(signUpResponse.success.dsaoIdNumber, signUpRequest)
-      _              <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, signUpResponse))
-    } yield signUpResponse
+      etmpSuccessResponse <- etmpSubscriptionConnector.signUp(signUpRequest, correlationId)
+      subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
+      _ <- dpsConnector.replaceSaoSubscription(subscriptionId, signUpRequest, correlationId)
+      _ <- taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse))
+    } yield SignUpResponse(subscriptionId)
+  }
 }

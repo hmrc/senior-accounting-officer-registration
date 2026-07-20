@@ -42,6 +42,7 @@ trait TestData {
       etmpSafeId = "etmpSafeId",
       contacts = generateContacts(),
       nominatedCompany = generateNominatedCompany(seed),
+      language = "En",
       idType = "UTR",
       idNumber = utr(seed),
       ctutr = utr(seed + 1),
@@ -49,7 +50,7 @@ trait TestData {
     )
   }
 
-  protected def generateSignUpResponse(seed: Int): EtmpSuccessResponse =
+  protected def generateEtmpSuccessResponse(seed: Int): EtmpSuccessResponse =
     EtmpSuccessResponse(
       Success(
         processingDate = "example date",

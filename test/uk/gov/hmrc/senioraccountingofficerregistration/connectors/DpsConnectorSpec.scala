@@ -33,6 +33,8 @@ import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscriptionRequest
 
+import java.util.UUID
+
 class DpsConnectorSpec
     extends AnyWordSpec
     with Matchers
@@ -67,6 +69,7 @@ class DpsConnectorSpec
   private given HeaderCarrier = HeaderCarrier()
 
   private lazy val connector = app.injector.instanceOf[DpsConnector]
+  private val correlationId  = UUID.randomUUID().toString
 
   "replaceSaoSubscription" should {
     "return 201 with empty payload" in {
@@ -82,7 +85,7 @@ class DpsConnectorSpec
           .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
           .willReturn(aResponse().withStatus(Status.CREATED))
       )
-      connector.replaceSaoSubscription(subscriptionId, signUpRequest).futureValue shouldBe ()
+      connector.replaceSaoSubscription(subscriptionId, signUpRequest, correlationId).futureValue shouldBe ()
     }
   }
 
@@ -99,6 +102,9 @@ class DpsConnectorSpec
         .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
         .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
     )
-    connector.replaceSaoSubscription(subscriptionId, signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+    connector
+      .replaceSaoSubscription(subscriptionId, signUpRequest, correlationId)
+      .failed
+      .futureValue shouldBe a[UpstreamErrorResponse]
   }
 }

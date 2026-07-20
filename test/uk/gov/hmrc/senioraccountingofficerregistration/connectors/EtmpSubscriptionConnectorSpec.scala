@@ -32,6 +32,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 
+import java.util.UUID
+
 class EtmpSubscriptionConnectorSpec
     extends AnyWordSpec
     with Matchers
@@ -66,11 +68,12 @@ class EtmpSubscriptionConnectorSpec
   private given HeaderCarrier = HeaderCarrier()
 
   private lazy val connector = app.injector.instanceOf[EtmpSubscriptionConnector]
+  private val correlationId  = UUID.randomUUID().toString
 
   "signUp" should {
     "post the sign-up request to ETMP and return the subscription ID" in {
       val request  = generateSignUpRequest(seed = 1)
-      val response = generateSignUpResponse(seed = 4)
+      val response = generateEtmpSuccessResponse(seed = 4)
 
       val expectedEtmpRequest = Json.obj(
         "idType"   -> request.idType,
@@ -94,7 +97,7 @@ class EtmpSubscriptionConnectorSpec
           )
       )
 
-      connector.signUp(request).futureValue shouldBe response
+      connector.signUp(request, correlationId).futureValue shouldBe response
     }
   }
 }

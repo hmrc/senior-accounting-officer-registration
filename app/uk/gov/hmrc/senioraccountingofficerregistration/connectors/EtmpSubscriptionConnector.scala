@@ -35,7 +35,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import java.time.Clock
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 @Singleton
@@ -43,7 +42,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
     ExecutionContext
 ) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[EtmpSuccessResponse] =
+  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[EtmpSuccessResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
       .withBody(Json.toJson(EtmpSubscriptionRequest(signUpRequest.idType, signUpRequest.idNumber)))
@@ -51,7 +50,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
-        "CorrelationId"           -> UUID.randomUUID().toString,
+        "CorrelationId"           -> correlationId,
         "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(clock.instant().truncatedTo(ChronoUnit.SECONDS))
       )
       .execute[HttpResponse]

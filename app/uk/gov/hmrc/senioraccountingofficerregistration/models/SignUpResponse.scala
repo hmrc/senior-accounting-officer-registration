@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,8 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models
 
 import play.api.libs.json.{Json, OFormat}
 
-final case class SignUpRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact],
-    language: String,
-    idType: String,
-    idNumber: String,
-    ctutr: String,
-    crn: String
-)
+case class SignUpResponse(subscriptionId: String)
 
-object SignUpRequest {
-  given OFormat[SignUpRequest] = Json.format[SignUpRequest]
+object SignUpResponse {
+  given OFormat[SignUpResponse] = Json.format[SignUpResponse]
 }
