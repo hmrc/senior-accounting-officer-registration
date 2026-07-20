@@ -22,8 +22,10 @@ import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.senioraccountingofficerregistration.models.SignUpRequest
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
+import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 @Singleton()
@@ -31,8 +33,18 @@ class SignUpController @Inject() (cc: ControllerComponents, signUpService: SignU
     extends BackendController(cc) {
 
   def signUp: Action[SignUpRequest] = Action.async(parse.json[SignUpRequest]) { implicit request =>
-    signUpService
-      .signUp(request.body)
-      .map(signUpResponse => Ok(Json.toJson(signUpResponse)))
+    request.headers
+      .get("correlationid")
+      .fold(
+        Future.successful(BadRequest("correlationid header not found"))
+      ) { header =>
+        Try(UUID.fromString(header)).fold(
+          _ => Future.successful(BadRequest("invalid correlationid header")),
+          header =>
+            signUpService
+              .signUp(request.body, header.toString)
+              .map(signUpResponse => Ok(Json.toJson(signUpResponse)))
+        )
+      }
   }
 }

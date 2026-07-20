@@ -37,6 +37,8 @@ import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import java.util.UUID
+
 class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll with TestData {
 
   private given ExecutionContext = ExecutionContext.global
@@ -46,13 +48,15 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
   private val signUpRequest       = generateSignUpRequest(seed = 1)
   private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
   private val signUpResponse      = SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
+  private val correlationId       = UUID.randomUUID().toString
 
   private val etmpSubscriptionConnector = mock(classOf[EtmpSubscriptionConnector])
   private val taxEnrolmentsConnector    = mock(classOf[TaxEnrolmentsConnector])
   private val dpsConnector              = mock(classOf[DpsConnector])
 
   private val signUpService = new SignUpService(etmpSubscriptionConnector, taxEnrolmentsConnector, dpsConnector) {
-    override def signUp(request: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
+    override def signUp(request: SignUpRequest, header: String)(using HeaderCarrier): Future[SignUpResponse] = {
+      header shouldBe correlationId
       request shouldBe signUpRequest
       Future.successful(signUpResponse)
     }
@@ -71,11 +75,37 @@ class SignUpControllerSpec extends AnyWordSpec with Matchers with BeforeAndAfter
         controller.signUp,
         FakeRequest("POST", "/sign-up")
           .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+          .withHeaders("correlationid" -> correlationId)
           .withJsonBody(Json.toJson(signUpRequest))
       )
 
       status(result) shouldBe Status.OK
       contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
+    }
+
+    "return 400 with 'correlationid header not found' message" in {
+      val result = call(
+        controller.signUp,
+        FakeRequest("POST", "/sign-up")
+          .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+          .withJsonBody(Json.toJson(signUpRequest))
+      )
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe "correlationid header not found"
+    }
+
+    "return 400 with 'invalid correlationid header' message" in {
+      val result = call(
+        controller.signUp,
+        FakeRequest("POST", "/sign-up")
+          .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+          .withHeaders("correlationid" -> "correlationId")
+          .withJsonBody(Json.toJson(signUpRequest))
+      )
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe "invalid correlationid header"
     }
 
     "return 400 for an invalid request body" in {

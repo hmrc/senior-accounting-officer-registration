@@ -44,7 +44,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
 
   private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
   private val signUpResponse      = SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
-  UUID.randomUUID().toString
+  private val correlationId       = UUID.randomUUID().toString
 
   "signUp" should {
     "call tax-enrolments with DSAO known facts after ETMP and DPS succeeds" in {
@@ -65,7 +65,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       when(taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(()))
 
-      service.signUp(signUpRequest).futureValue shouldBe signUpResponse
+      service.signUp(signUpRequest, correlationId).futureValue shouldBe signUpResponse
 
       verify(etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest), anyString())(using anyArg[HeaderCarrier])
       verify(dpsConnector).replaceSaoSubscription(
@@ -93,7 +93,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("ETMP failed", 500)))
 
-      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      service.signUp(signUpRequest, correlationId).failed.futureValue shouldBe a[UpstreamErrorResponse]
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest], anyArg[String])(using
         anyArg[HeaderCarrier]
@@ -115,18 +115,19 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )
         .thenReturn(Future.failed(UpstreamErrorResponse("DPS failed", 500)))
 
-      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      service.signUp(signUpRequest, correlationId).failed.futureValue shouldBe a[UpstreamErrorResponse]
       verify(taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
     }
     "not call tax-enrolments when ETMP fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("ETMP failed", 500)))
 
-      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      service.signUp(signUpRequest, correlationId).failed.futureValue shouldBe a[UpstreamErrorResponse]
 
       verify(taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
     }
@@ -134,7 +135,8 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
     "fail when tax-enrolments fails" in {
       val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
       val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector)
+      val dpsConnector           = mock(classOf[DpsConnector])
+      val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector)
 
       when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.successful(etmpSuccessResponse))
@@ -147,7 +149,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       when(taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(UpstreamErrorResponse("tax-enrolments failed", 500)))
 
-      service.signUp(signUpRequest).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      service.signUp(signUpRequest, correlationId).failed.futureValue shouldBe a[UpstreamErrorResponse]
     }
   }
 }

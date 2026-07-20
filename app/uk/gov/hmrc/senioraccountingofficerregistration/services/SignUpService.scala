@@ -26,7 +26,6 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{SignUpRequest, Si
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 @Singleton
@@ -36,8 +35,7 @@ class SignUpService @Inject() (
     dpsConnector: DpsConnector
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResponse] = {
-    val correlationId = UUID.randomUUID().toString
+  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[SignUpResponse] = {
     for {
       etmpSuccessResponse <- etmpSubscriptionConnector.signUp(signUpRequest, correlationId)
       _ <- dpsConnector.replaceSaoSubscription(etmpSuccessResponse.success.dsaoIdNumber, signUpRequest, correlationId)
