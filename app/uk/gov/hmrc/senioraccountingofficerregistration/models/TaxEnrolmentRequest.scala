@@ -40,8 +40,8 @@ object TaxEnrolmentRequest {
     TaxEnrolmentRequest(
       identifiers = Seq(TaxEnrolmentKnownFact(etmpSubscriptionId, etmpSuccessResponse.success.dsaoIdNumber)),
       verifiers = Seq(
-        TaxEnrolmentKnownFact(ctutr, signUpRequest.ctutr),
-        TaxEnrolmentKnownFact(crn, signUpRequest.crn)
+        TaxEnrolmentKnownFact(ctutr, signUpRequest.nominatedCompany.utr),
+        TaxEnrolmentKnownFact(crn, signUpRequest.nominatedCompany.crn)
       )
     )
 }

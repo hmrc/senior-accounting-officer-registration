@@ -1,0 +1,39 @@
+info:
+  name: Auth no enrolments
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{authHost}}/auth-login-stub/gg-sign-in"
+  headers:
+    - name: Cookie
+      value: "{{cookie}}"
+  body:
+    type: form-urlencoded
+    data:
+      - name: csrfToken
+        value: "{{csrfToken}}"
+      - name: authorityId
+        value: ""
+      - name: redirectionUrl
+        value: /auth-login-stub/gg-sign-in
+      - name: excludeGnapToken
+        value: "false"
+      - name: credentialStrength
+        value: strong
+      - name: confidenceLevel
+        value: "50"
+      - name: affinityGroup
+        value: Organisation
+      - name: credentialRole
+        value: User
+      - name: email
+        value: user@test.com
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

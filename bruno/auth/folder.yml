@@ -1,0 +1,42 @@
+info:
+  name: auth
+  type: folder
+  seq: 2
+
+request:
+  auth: inherit
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+        const cheerio = require('cheerio');
+
+        const baseUrl = bru.getEnvVar('authHost');
+
+        const response = await axios.get(`${baseUrl}/auth-login-stub/gg-sign-in`);
+
+        if (response.status != 200) throw new Error('Stub auth login response is not 200');
+
+        const $ = cheerio.load(response.data);
+
+        const csrfToken = $('input[name=csrfToken]').attr("value")
+
+        console.log(csrfToken);
+        bru.setVar('csrfToken', csrfToken);
+    - type: after-response
+      code: |-
+        const axios = require('axios');
+
+        const baseUrl = bru.getEnvVar('hubBaseUrl');
+
+        const setCookie = res.headers['set-cookie'];
+
+        const mdtpRegex = /(mdtp=[^;]*)/;
+        const mdtp = mdtpRegex.exec(setCookie)[1];
+
+        console.log(mdtp)
+
+        const getAuthTokenResponse = await axios.get(`${baseUrl}/test-only/authorization`, { 'headers': { Cookie : mdtp } });
+
+        console.log(getAuthTokenResponse.data)
+        bru.setEnvVar('authorization', getAuthTokenResponse.data.authorization);

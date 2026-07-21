@@ -1,0 +1,10 @@
+name: local
+variables:
+  - name: baseUrl
+    value: http://localhost:10059/senior-accounting-officer-registration
+  - name: authHost
+    value: http://localhost:9949
+  - name: hubBaseUrl
+    value: http://localhost:10056/senior-accounting-officer
+  - secret: true
+    name: authorization

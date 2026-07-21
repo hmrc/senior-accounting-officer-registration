@@ -79,8 +79,8 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         TaxEnrolmentRequest(
           identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", subscriptionId)),
           verifiers = Seq(
-            TaxEnrolmentKnownFact("CTUTR", signUpRequest.ctutr),
-            TaxEnrolmentKnownFact("CRN", signUpRequest.crn)
+            TaxEnrolmentKnownFact("CTUTR", signUpRequest.nominatedCompany.utr),
+            TaxEnrolmentKnownFact("CRN", signUpRequest.nominatedCompany.crn)
           )
         )
     }

@@ -45,7 +45,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
   def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[EtmpSuccessResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
-      .withBody(Json.toJson(EtmpSubscriptionRequest(signUpRequest.idType, signUpRequest.idNumber)))
+      .withBody(Json.toJson(EtmpSubscriptionRequest("UTR", signUpRequest.nominatedCompany.utr)))
       .setHeader(
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",

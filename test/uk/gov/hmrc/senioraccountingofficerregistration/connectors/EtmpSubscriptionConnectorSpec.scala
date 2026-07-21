@@ -76,8 +76,8 @@ class EtmpSubscriptionConnectorSpec
       val response = generateEtmpSuccessResponse(seed = 4)
 
       val expectedEtmpRequest = Json.obj(
-        "idType"   -> request.idType,
-        "idNumber" -> request.idNumber
+        "idType"   -> "UTR",
+        "idNumber" -> request.nominatedCompany.utr
       )
 
       wireMockServer.stubFor(

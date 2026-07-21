@@ -30,8 +30,8 @@ trait TestData {
 
   protected def generateContacts(): List[Contact] =
     List(
-      Contact("contact 1", "contact1@example.com", "status"),
-      Contact("contact 2", "contact2@example.com", "status")
+      Contact("contact 1", "contact1@example.com", "en-GB", "status"),
+      Contact("contact 2", "contact2@example.com", "en-GB", "status")
     )
 
   protected def generateNominatedCompany(seed: Int): NominatedCompany =
@@ -41,12 +41,7 @@ trait TestData {
     SignUpRequest(
       etmpSafeId = "etmpSafeId",
       contacts = generateContacts(),
-      nominatedCompany = generateNominatedCompany(seed),
-      language = "En",
-      idType = "UTR",
-      idNumber = utr(seed),
-      ctutr = utr(seed + 1),
-      crn = crn(seed + 2)
+      nominatedCompany = generateNominatedCompany(seed)
     )
   }
 
