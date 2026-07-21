@@ -39,7 +39,7 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
     val replaceRequest: ReplaceSaoSubscriptionRequest =
       ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
     httpClient
-      .put(url"${appConfig.dpsReplaceSaoSubscriptionUrl}/${saoSubscriptionId}")
+      .put(url"${appConfig.dpsReplaceSaoSubscriptionUrl}/$saoSubscriptionId")
       .setHeader(
         HeaderNames.AUTHORIZATION -> appConfig.dpsReplacementSaoSubscriptionAuthorization
       )

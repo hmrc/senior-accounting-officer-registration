@@ -5,19 +5,29 @@ info:
 
 http:
   method: POST
-  url: http://localhost:10059/senior-accounting-officer-registration/sign-up
+  url: "{{baseUrl}}/sign-up"
+  headers:
+    - name: Authorization
+      value: "{{authorization}}"
+    - name: correlationId
+      value: "{{$randomUUID}}"
   body:
     type: json
     data: |-
       {
-        "idType": "UTR",
-        "idNumber": "2233445566",
-        "ctutr": "2233445567",
-        "crn": "11223344"
+        "etmpSafeId": "1234567890",
+        "contacts": [{
+          "name": "String",
+          "email": "String", 
+          "status": "String"
+        }],
+        "nominatedCompany": {
+          "name": "Test Company Ltd PLC",
+          "utr": "2233445567",
+          "crn": "11223344"
+        },
+        "language": "en-GB"
       }
-  auth:
-    type: bearer
-    token: ""
 
 settings:
   encodeUrl: true
