@@ -17,18 +17,13 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
 import play.api.http.HeaderNames
-import play.api.http.Status.CREATED
 import play.api.libs.json.Json
 import play.api.libs.ws.writeableOf_JsValue
 import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{
-  EtmpSubscriptionRequest,
-  EtmpSuccessResponse,
-  SignUpRequest
-}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSubscriptionRequest, SignUpRequest}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -42,7 +37,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
     ExecutionContext
 ) {
 
-  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[EtmpSuccessResponse] =
+  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[HttpResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
       .withBody(Json.toJson(EtmpSubscriptionRequest("UTR", signUpRequest.nominatedCompany.utr)))
@@ -54,12 +49,4 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(clock.instant().truncatedTo(ChronoUnit.SECONDS))
       )
       .execute[HttpResponse]
-      .map {
-        case response if response.status == CREATED => response.json.as[EtmpSuccessResponse]
-        case response                               =>
-          throw UpstreamErrorResponse(
-            s"ETMP subscription API returned ${response.status}",
-            response.status
-          )
-      }
 }

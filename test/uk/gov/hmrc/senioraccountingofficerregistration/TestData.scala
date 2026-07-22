@@ -30,8 +30,8 @@ trait TestData {
 
   protected def generateContacts(): List[Contact] =
     List(
-      Contact("contact 1", "contact1@example.com", "en-GB", "status"),
-      Contact("contact 2", "contact2@example.com", "en-GB", "status")
+      Contact("contact 1", "contact1@example.com", "active", "en-GB"),
+      Contact("contact 2", "contact2@example.com", "active", "en-GB")
     )
 
   protected def generateNominatedCompany(seed: Int): NominatedCompany =

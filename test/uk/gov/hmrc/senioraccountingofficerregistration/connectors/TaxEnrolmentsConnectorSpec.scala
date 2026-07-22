@@ -28,7 +28,7 @@ import play.api.Application
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{TaxEnrolmentKnownFact, TaxEnrolmentRequest}
 
@@ -73,7 +73,7 @@ class TaxEnrolmentsConnectorSpec
   )
 
   "enrol" should {
-    "put the DSAO enrolment request to tax-enrolments" in {
+    "put the DSAO enrolment request to tax-enrolments and return the raw 2xx response" in {
       wireMockServer.stubFor(
         put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
@@ -81,16 +81,16 @@ class TaxEnrolmentsConnectorSpec
           .willReturn(aResponse().withStatus(Status.NO_CONTENT))
       )
 
-      connector.enrol(request).futureValue shouldBe ()
+      connector.enrol(request).futureValue.status shouldBe Status.NO_CONTENT
     }
 
-    "fail when tax-enrolments returns a non-2xx response" in {
+    "return the raw response without throwing on a non-2xx status" in {
       wireMockServer.stubFor(
         put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
           .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
       )
 
-      connector.enrol(request).failed.futureValue shouldBe a[UpstreamErrorResponse]
+      connector.enrol(request).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
     }
   }
 }

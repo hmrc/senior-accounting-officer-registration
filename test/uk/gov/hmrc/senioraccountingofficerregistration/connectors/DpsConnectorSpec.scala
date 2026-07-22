@@ -28,12 +28,10 @@ import play.api.Application
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscriptionRequest
-
-import java.util.UUID
 
 class DpsConnectorSpec
     extends AnyWordSpec
@@ -69,10 +67,9 @@ class DpsConnectorSpec
   private given HeaderCarrier = HeaderCarrier()
 
   private lazy val connector = app.injector.instanceOf[DpsConnector]
-  private val correlationId  = UUID.randomUUID().toString
 
   "replaceSaoSubscription" should {
-    "return 201 with empty payload" in {
+    "return the raw 201 response with empty payload" in {
       val signUpRequest                 = generateSignUpRequest(2)
       val replaceSaoSubscriptionRequest =
         ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
@@ -85,26 +82,26 @@ class DpsConnectorSpec
           .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
           .willReturn(aResponse().withStatus(Status.CREATED))
       )
-      connector.replaceSaoSubscription(subscriptionId, signUpRequest, correlationId).futureValue shouldBe ()
+      connector.replaceSaoSubscription(subscriptionId, signUpRequest).futureValue.status shouldBe Status.CREATED
     }
-  }
 
-  "fail when DPS returns a non 201 response" in {
-    val signUpRequest                 = generateSignUpRequest(2)
-    val replaceSaoSubscriptionRequest =
-      ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
-    val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
-    val subscriptionId        = "456"
+    "return the raw response without throwing when DPS returns a non-201 status" in {
+      val signUpRequest                 = generateSignUpRequest(2)
+      val replaceSaoSubscriptionRequest =
+        ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+      val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
+      val subscriptionId        = "456"
 
-    wireMockServer.stubFor(
-      put(s"/subscriptions/${subscriptionId}")
-        .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-        .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
-        .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
-    )
-    connector
-      .replaceSaoSubscription(subscriptionId, signUpRequest, correlationId)
-      .failed
-      .futureValue shouldBe a[UpstreamErrorResponse]
+      wireMockServer.stubFor(
+        put(s"/subscriptions/${subscriptionId}")
+          .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+          .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
+          .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
+      )
+      connector
+        .replaceSaoSubscription(subscriptionId, signUpRequest)
+        .futureValue
+        .status shouldBe Status.INTERNAL_SERVER_ERROR
+    }
   }
 }

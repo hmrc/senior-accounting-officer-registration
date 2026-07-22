@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,20 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
-final case class SignUpRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
-)
+enum Reason {
+  case DOWNSTREAM_SERVICE_ERROR
+  case DOWNSTREAM_SERVICE_UNAVAILABLE
+  case DOWNSTREAM_SERVICE_MISALIGNMENT
+}
 
-object SignUpRequest {
+object Reason {
+  given Writes[Reason] = Writes(reason => JsString(reason.toString))
+}
 
-  private val reads: Reads[SignUpRequest] =
-    ((JsPath \ "etmpSafeId").read[String] and
-      (JsPath \ "nominatedCompany").read[NominatedCompany] and
-      (JsPath \ "contacts")
-        .read[List[Contact]]
-        .filter(JsonValidationError("error.contacts.empty"))(_.nonEmpty))(SignUpRequest.apply)
+final case class ApiError(reason: Reason)
 
-  given OFormat[SignUpRequest] = OFormat(reads, Json.writes[SignUpRequest])
+object ApiError {
+  given OWrites[ApiError] = Json.writes[ApiError]
 }

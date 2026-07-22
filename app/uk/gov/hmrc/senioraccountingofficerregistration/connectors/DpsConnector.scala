@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
-import play.api.Logging
 import play.api.http.HeaderNames
-import play.api.http.Status.CREATED
 import play.api.libs.json.Json
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.*
+import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{ReplaceSaoSubscriptionRequest, SignUpRequest}
@@ -31,11 +30,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) extends Logging {
+class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) {
 
-  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest, correlationId: String)(using
+  def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest)(using
       HeaderCarrier
-  ): Future[Unit] = {
+  ): Future[HttpResponse] = {
     val replaceRequest: ReplaceSaoSubscriptionRequest =
       ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
     httpClient
@@ -45,15 +44,5 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
       )
       .withBody(Json.toJson(replaceRequest))
       .execute[HttpResponse]
-      .map {
-        case response if response.status == CREATED => ()
-        case response                               => {
-          logger.error(s"DPS API failed with CorrelationId: $correlationId")
-          throw UpstreamErrorResponse(
-            s"DPS api returned ${response.status}",
-            response.status
-          )
-        }
-      }
   }
 }
