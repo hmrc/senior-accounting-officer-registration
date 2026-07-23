@@ -31,6 +31,7 @@ import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
+import uk.gov.hmrc.senioraccountingofficerregistration.models.EtmpSuccessResponse
 
 import java.util.UUID
 
@@ -71,7 +72,7 @@ class EtmpSubscriptionConnectorSpec
   private val correlationId  = UUID.randomUUID().toString
 
   "signUp" should {
-    "post the sign-up request to ETMP and return the subscription ID" in {
+    "post the sign-up request to ETMP and return the raw 201 response" in {
       val request  = generateSignUpRequest(seed = 1)
       val response = generateEtmpSuccessResponse(seed = 4)
 
@@ -97,7 +98,20 @@ class EtmpSubscriptionConnectorSpec
           )
       )
 
-      connector.signUp(request, correlationId).futureValue shouldBe response
+      val result = connector.signUp(request, correlationId).futureValue
+      result.status shouldBe Status.CREATED
+      result.json.as[EtmpSuccessResponse] shouldBe response
+    }
+
+    "return the raw response without throwing on a non-201 status" in {
+      val request = generateSignUpRequest(seed = 1)
+
+      wireMockServer.stubFor(
+        post(urlEqualTo("/RESTAdapter/dsao/subscription"))
+          .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
+      )
+
+      connector.signUp(request, correlationId).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
     }
   }
 }

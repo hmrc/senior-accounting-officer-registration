@@ -31,17 +31,9 @@ import javax.inject.{Inject, Singleton}
 @Singleton
 class TaxEnrolmentsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) {
 
-  def enrol(request: TaxEnrolmentRequest)(using HeaderCarrier): Future[Unit] =
+  def enrol(request: TaxEnrolmentRequest)(using HeaderCarrier): Future[HttpResponse] =
     httpClient
       .put(url"${appConfig.taxEnrolmentsDsaoEnrolmentUrl}")
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
-      .map {
-        case response if response.status >= 200 && response.status < 300 => ()
-        case response                                                    =>
-          throw UpstreamErrorResponse(
-            s"Tax enrolments API returned ${response.status}",
-            response.status
-          )
-      }
 }

@@ -30,12 +30,12 @@ trait TestData {
 
   protected def generateContacts(): List[Contact] =
     List(
-      Contact("contact 1", "contact1@example.com", "en-GB", "status"),
-      Contact("contact 2", "contact2@example.com", "en-GB", "status")
+      Contact(name = "contact 1", email = "contact1@example.com", status = "active", language = "en-GB"),
+      Contact(name = "contact 2", email = "contact2@example.com", status = "active", language = "en-GB")
     )
 
   protected def generateNominatedCompany(seed: Int): NominatedCompany =
-    NominatedCompany("example company", utr(seed + 1), crn(seed + 2))
+    NominatedCompany(name = "example company", utr = utr(seed + 1), crn = crn(seed + 2))
 
   protected def generateSignUpRequest(seed: Int): SignUpRequest = {
     SignUpRequest(

@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 final case class ReplaceSaoSubscriptionRequest(
     etmpSafeId: String,
@@ -37,5 +38,14 @@ object NominatedCompany {
 final case class Contact(name: String, email: String, status: String, language: String)
 
 object Contact {
-  given OFormat[Contact] = Json.format[Contact]
+
+  private[models] val emailRegex = """^[^\s@.]+(\.[^\s@.]+)*@[^\s@.]+(\.[^\s@.]+)+$""".r
+
+  private val reads: Reads[Contact] =
+    ((JsPath \ "name").read[String] and
+      (JsPath \ "email").read[String](Reads.pattern(emailRegex, "error.email.invalid")) and
+      (JsPath \ "status").read[String] and
+      (JsPath \ "language").read[String])(Contact.apply)
+
+  given OFormat[Contact] = OFormat(reads, Json.writes[Contact])
 }
