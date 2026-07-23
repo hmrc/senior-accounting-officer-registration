@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services
 
+import cats.data.EitherT
+import cats.implicits.*
 import play.api.http.Status.*
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -40,22 +42,14 @@ class SignUpService @Inject() (
 )(using ExecutionContext) {
 
   def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[SignUpResult] =
-    etmpSubscriptionConnector.signUp(signUpRequest, correlationId).map(sanitiseEtmp).flatMap {
-      case Left(failure)              => Future.successful(failure)
-      case Right(etmpSuccessResponse) =>
-        val subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
-        dpsConnector.replaceSaoSubscription(subscriptionId, signUpRequest).map(sanitiseDps).flatMap {
-          case Left(failure) => Future.successful(failure)
-          case Right(_)      =>
-            taxEnrolmentsConnector
-              .enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse))
-              .map(sanitiseTaxEnrolments)
-              .map {
-                case Left(failure) => failure
-                case Right(_)      => SignUpResult.Success(subscriptionId)
-              }
-        }
-    }
+    (for {
+      etmpSuccessResponse <- EitherT(etmpSubscriptionConnector.signUp(signUpRequest, correlationId).map(sanitiseEtmp))
+      subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
+      _ <- EitherT(dpsConnector.replaceSaoSubscription(subscriptionId, signUpRequest).map(sanitiseDps))
+      _ <- EitherT(
+        taxEnrolmentsConnector.enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse)).map(sanitiseTaxEnrolments)
+      )
+    } yield SignUpResult.Success(subscriptionId)).merge[SignUpResult]
 
   private def sanitiseEtmp(response: HttpResponse): Either[SignUpResult & Failure, EtmpSuccessResponse] =
     response match {
