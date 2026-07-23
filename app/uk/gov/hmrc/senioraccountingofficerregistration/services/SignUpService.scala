@@ -52,19 +52,17 @@ class SignUpService @Inject() (
     } yield SignUpResult.Success(subscriptionId)).merge[SignUpResult]
 
   private def sanitiseEtmp(response: HttpResponse): Either[SignUpResult & Failure, EtmpSuccessResponse] =
-    response match {
-      case HttpResponse(CREATED, body, _) =>
-        Try(Json.parse(body).as[EtmpSuccessResponse]).fold(
-          _ => Left(SignUpResult.MalformedResponse(DownstreamService.ETMP)),
-          Right(_)
-        )
-      case HttpResponse(status, _, _) => Left(toFailure(DownstreamService.ETMP, status))
+    response.status match {
+      case CREATED =>
+        Try(Json.parse(response.body).as[EtmpSuccessResponse]).toEither
+          .leftMap(_ => SignUpResult.MalformedResponse(DownstreamService.ETMP))
+      case status => Left(toFailure(DownstreamService.ETMP, status))
     }
 
   private def sanitiseDps(response: HttpResponse): Either[SignUpResult & Failure, Unit] =
-    response match {
-      case HttpResponse(CREATED, _, _) => Right(())
-      case HttpResponse(status, _, _)  => Left(toFailure(DownstreamService.DPS, status))
+    response.status match {
+      case CREATED => Right(())
+      case status  => Left(toFailure(DownstreamService.DPS, status))
     }
 
   private def sanitiseTaxEnrolments(response: HttpResponse): Either[SignUpResult & Failure, Unit] =
