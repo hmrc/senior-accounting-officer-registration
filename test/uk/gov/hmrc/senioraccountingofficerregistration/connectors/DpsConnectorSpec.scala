@@ -77,7 +77,7 @@ class DpsConnectorSpec
       val subscriptionId        = "123"
 
       wireMockServer.stubFor(
-        put(s"/subscriptions/${subscriptionId}")
+        put(s"/dapm/subscriptions/${subscriptionId}")
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
           .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
           .willReturn(aResponse().withStatus(Status.CREATED))
@@ -93,7 +93,7 @@ class DpsConnectorSpec
       val subscriptionId        = "456"
 
       wireMockServer.stubFor(
-        put(s"/subscriptions/${subscriptionId}")
+        put(s"/dapm/subscriptions/${subscriptionId}")
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
           .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
           .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))

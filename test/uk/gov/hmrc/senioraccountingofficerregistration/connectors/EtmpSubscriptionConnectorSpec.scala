@@ -82,7 +82,7 @@ class EtmpSubscriptionConnectorSpec
       )
 
       wireMockServer.stubFor(
-        post(urlEqualTo("/RESTAdapter/dsao/subscription"))
+        post(urlEqualTo("/etmp/RESTAdapter/dsao/subscription"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
           .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic c29tZS1jbGllbnQtaWQ6c29tZS1jbGllbnQtc2VjcmV0"))
           .withHeader("X-Transmitting-System", equalTo("HIP"))
@@ -107,7 +107,7 @@ class EtmpSubscriptionConnectorSpec
       val request = generateSignUpRequest(seed = 1)
 
       wireMockServer.stubFor(
-        post(urlEqualTo("/RESTAdapter/dsao/subscription"))
+        post(urlEqualTo("/etmp/RESTAdapter/dsao/subscription"))
           .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
       )
 

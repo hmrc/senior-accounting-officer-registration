@@ -29,10 +29,10 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
   val appName: String = config.get[String]("appName")
 
   val etmpSubscriptionUrl: String =
-    s"${servicesConfig.baseUrl("hip")}/RESTAdapter/dsao/subscription"
+    s"${servicesConfig.baseUrl("hip")}/etmp/RESTAdapter/dsao/subscription"
 
   val dpsReplaceSaoSubscriptionUrl: String =
-    s"${servicesConfig.baseUrl("hip")}/subscriptions/"
+    s"${servicesConfig.baseUrl("hip")}/dapm/subscriptions"
 
   val taxEnrolmentsDsaoEnrolmentUrl: String =
     s"${servicesConfig.baseUrl("tax-enrolments")}/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"
