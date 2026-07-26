@@ -18,7 +18,7 @@ http:
         "etmpSafeId": "1234567890",
         "nominatedCompany": {
           "name": "Test Company Ltd PLC",
-          "utr": "2233445567",
+          "utr": "1234567890",
           "crn": "11223344"
         },
         "contacts": [
