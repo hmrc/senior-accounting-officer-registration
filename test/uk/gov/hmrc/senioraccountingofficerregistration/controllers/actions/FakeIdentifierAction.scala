@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions
 
-import play.api.libs.json.*
+import play.api.mvc.*
+import uk.gov.hmrc.auth.core.*
 
-enum Reason {
-  case ALREADY_ENROLED
-  case UNAUTHENTICATED
-  case INVALID_CORRELATION_ID
-  case MISSING_CORRELATION_ID
-  case DOWNSTREAM_SERVICE_ERROR
-  case DOWNSTREAM_SERVICE_UNAVAILABLE
-  case DOWNSTREAM_SERVICE_MISALIGNMENT
-}
+import scala.concurrent.{ExecutionContext, Future}
 
-object Reason {
-  given Writes[Reason] = Writes(reason => JsString(reason.toString))
-}
+import javax.inject.Inject
 
-final case class ApiError(reason: Reason)
+class FakeIdentifierAction @Inject() (authConnector: AuthConnector, bodyParsers: BodyParsers.Default)(using
+    ExecutionContext
+) extends IdentifierAction(authConnector, bodyParsers) {
 
-object ApiError {
-  given OWrites[ApiError] = Json.writes[ApiError]
+  override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] =
+    block(request)
 }

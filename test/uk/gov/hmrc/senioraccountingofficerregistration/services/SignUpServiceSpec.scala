@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services
 
-import org.mockito.ArgumentMatchers.{any as anyArg, anyString}
+import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import org.scalatest.concurrent.ScalaFutures
@@ -36,8 +36,6 @@ import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{D
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import java.util.UUID
-
 class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with TestData {
 
   private given ExecutionContext = ExecutionContext.global
@@ -46,7 +44,6 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   private val signUpRequest       = generateSignUpRequest(seed = 1)
   private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
   private val subscriptionId      = etmpSuccessResponse.success.dsaoIdNumber
-  private val correlationId       = UUID.randomUUID().toString
 
   private val etmpCreated = HttpResponse(Status.CREATED, Json.stringify(Json.toJson(etmpSuccessResponse)))
 
@@ -59,7 +56,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   }
 
   private def stubEtmp(etmpConnector: EtmpSubscriptionConnector, response: HttpResponse): Unit =
-    when(etmpConnector.signUp(anyArg[SignUpRequest], anyArg[String])(using anyArg[HeaderCarrier]))
+    when(etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
       .thenReturn(Future.successful(response))
 
   private def stubDps(dpsConnector: DpsConnector, response: HttpResponse): Unit =
@@ -79,9 +76,9 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe SignUpResult.Success(subscriptionId)
+      service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Success(subscriptionId)
 
-      verify(etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest), anyString())(using anyArg[HeaderCarrier])
+      verify(etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest))(using anyArg[HeaderCarrier])
       verify(dpsConnector).replaceSaoSubscription(
         ArgumentMatchers.eq(subscriptionId),
         ArgumentMatchers.eq(signUpRequest)
@@ -101,7 +98,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       val (etmpConnector, dpsConnector, _, service) = connectors()
       stubEtmp(etmpConnector, HttpResponse(Status.CREATED, "not json"))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe
+      service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.MalformedResponse(DownstreamService.ETMP)
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
@@ -113,7 +110,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       val (etmpConnector, dpsConnector, _, service) = connectors()
       stubEtmp(etmpConnector, HttpResponse(Status.INTERNAL_SERVER_ERROR, ""))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe
+      service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.InternalServerFailure(DownstreamService.ETMP)
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
@@ -125,7 +122,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       val (etmpConnector, _, _, service) = connectors()
       stubEtmp(etmpConnector, HttpResponse(Status.IM_A_TEAPOT, ""))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe
+      service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.UnknownFailure(DownstreamService.ETMP, Status.IM_A_TEAPOT)
     }
 
@@ -134,7 +131,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubEtmp(etmpConnector, etmpCreated)
       stubDps(dpsConnector, HttpResponse(Status.SERVICE_UNAVAILABLE, ""))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe
+      service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.ServiceUnavailableFailure(DownstreamService.DPS)
 
       verify(taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
@@ -146,7 +143,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(taxEnrolmentsConnector, HttpResponse(Status.BAD_REQUEST, ""))
 
-      service.signUp(signUpRequest, correlationId).futureValue shouldBe
+      service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.BadRequestFailure(DownstreamService.TAX_ENROLMENTS)
     }
   }

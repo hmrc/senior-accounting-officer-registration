@@ -66,10 +66,9 @@ class EtmpSubscriptionConnectorSpec
     super.afterAll()
   }
 
-  private given HeaderCarrier = HeaderCarrier()
-
-  private lazy val connector = app.injector.instanceOf[EtmpSubscriptionConnector]
-  private val correlationId  = UUID.randomUUID().toString
+  private lazy val connector  = app.injector.instanceOf[EtmpSubscriptionConnector]
+  private val correlationId   = UUID.randomUUID().toString
+  private given HeaderCarrier = HeaderCarrier(extraHeaders = Seq("correlationId" -> correlationId))
 
   "signUp" should {
     "post the sign-up request to ETMP and return the raw 201 response" in {
@@ -98,7 +97,7 @@ class EtmpSubscriptionConnectorSpec
           )
       )
 
-      val result = connector.signUp(request, correlationId).futureValue
+      val result = connector.signUp(request).futureValue
       result.status shouldBe Status.CREATED
       result.json.as[EtmpSuccessResponse] shouldBe response
     }
@@ -111,7 +110,7 @@ class EtmpSubscriptionConnectorSpec
           .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
       )
 
-      connector.signUp(request, correlationId).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
+      connector.signUp(request).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
     }
   }
 }

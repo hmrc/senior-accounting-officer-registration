@@ -33,6 +33,8 @@ import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscriptionRequest
 
+import java.util.UUID
+
 class DpsConnectorSpec
     extends AnyWordSpec
     with Matchers
@@ -64,7 +66,9 @@ class DpsConnectorSpec
     super.afterAll()
   }
 
-  private given HeaderCarrier = HeaderCarrier()
+  private val correlationId = UUID.randomUUID().toString
+
+  private given HeaderCarrier = HeaderCarrier(extraHeaders = Seq("correlationId" -> correlationId))
 
   private lazy val connector = app.injector.instanceOf[DpsConnector]
 
@@ -80,6 +84,7 @@ class DpsConnectorSpec
         put(s"/dapm/subscriptions/${subscriptionId}")
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
           .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
+          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
           .willReturn(aResponse().withStatus(Status.CREATED))
       )
       connector.replaceSaoSubscription(subscriptionId, signUpRequest).futureValue.status shouldBe Status.CREATED
