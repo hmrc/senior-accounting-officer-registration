@@ -37,7 +37,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
     ExecutionContext
 ) {
 
-  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[HttpResponse] =
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[HttpResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
       .withBody(Json.toJson(EtmpSubscriptionRequest("UTR", signUpRequest.nominatedCompany.utr)))
@@ -45,7 +45,6 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",
         "X-Originating-System"    -> "MDTP",
-        "CorrelationId"           -> correlationId,
         "X-Receipt-Date" -> DateTimeFormatter.ISO_INSTANT.format(clock.instant().truncatedTo(ChronoUnit.SECONDS))
       )
       .execute[HttpResponse]

@@ -32,6 +32,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{TaxEnrolmentKnownFact, TaxEnrolmentRequest}
 
+import java.util.UUID
+
 class TaxEnrolmentsConnectorSpec
     extends AnyWordSpec
     with Matchers
@@ -60,9 +62,9 @@ class TaxEnrolmentsConnectorSpec
     super.afterAll()
   }
 
-  private given HeaderCarrier = HeaderCarrier()
-
-  private lazy val connector = app.injector.instanceOf[TaxEnrolmentsConnector]
+  private val correlationId   = UUID.randomUUID().toString
+  private given HeaderCarrier = HeaderCarrier(extraHeaders = Seq("correlationId" -> correlationId))
+  private lazy val connector  = app.injector.instanceOf[TaxEnrolmentsConnector]
 
   private val request = TaxEnrolmentRequest(
     identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", "SAOABC123456789")),
@@ -77,6 +79,7 @@ class TaxEnrolmentsConnectorSpec
       wireMockServer.stubFor(
         put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
           .withRequestBody(equalToJson(Json.stringify(Json.toJson(request))))
           .willReturn(aResponse().withStatus(Status.NO_CONTENT))
       )

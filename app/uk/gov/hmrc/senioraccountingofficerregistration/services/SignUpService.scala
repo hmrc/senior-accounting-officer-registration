@@ -41,9 +41,9 @@ class SignUpService @Inject() (
     dpsConnector: DpsConnector
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest, correlationId: String)(using HeaderCarrier): Future[SignUpResult] =
+  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResult] =
     (for {
-      etmpSuccessResponse <- EitherT(etmpSubscriptionConnector.signUp(signUpRequest, correlationId).map(sanitiseEtmp))
+      etmpSuccessResponse <- EitherT(etmpSubscriptionConnector.signUp(signUpRequest).map(sanitiseEtmp))
       subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
       _ <- EitherT(dpsConnector.replaceSaoSubscription(subscriptionId, signUpRequest).map(sanitiseDps))
       _ <- EitherT(
@@ -67,8 +67,8 @@ class SignUpService @Inject() (
 
   private def sanitiseTaxEnrolments(response: HttpResponse): Either[SignUpResult & Failure, Unit] =
     response.status match {
-      case status if status >= 200 && status < 300 => Right(())
-      case status                                  => Left(toFailure(DownstreamService.TAX_ENROLMENTS, status))
+      case NO_CONTENT => Right(())
+      case status     => Left(toFailure(DownstreamService.TAX_ENROLMENTS, status))
     }
 }
 

@@ -16,24 +16,6 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.*
+import play.api.mvc.{Request, WrappedRequest}
 
-enum Reason {
-  case ALREADY_ENROLED
-  case UNAUTHENTICATED
-  case INVALID_CORRELATION_ID
-  case MISSING_CORRELATION_ID
-  case DOWNSTREAM_SERVICE_ERROR
-  case DOWNSTREAM_SERVICE_UNAVAILABLE
-  case DOWNSTREAM_SERVICE_MISALIGNMENT
-}
-
-object Reason {
-  given Writes[Reason] = Writes(reason => JsString(reason.toString))
-}
-
-final case class ApiError(reason: Reason)
-
-object ApiError {
-  given OWrites[ApiError] = Json.writes[ApiError]
-}
+final case class CorrelatableRequest[A](request: Request[A], correlationId: String) extends WrappedRequest[A](request)
