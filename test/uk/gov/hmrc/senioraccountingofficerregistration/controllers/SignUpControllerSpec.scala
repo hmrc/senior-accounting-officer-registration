@@ -36,7 +36,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{FakeIdentifierAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
 
 import scala.concurrent.Future
 
@@ -147,32 +147,38 @@ class SignUpControllerSpec
       postSignUp(Json.toJson(signUpRequest))
     }
 
-    "translate a MalformedResponse to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
-      val result = resultFor(SignUpResult.MalformedResponse(DownstreamService.ETMP))
-      status(result) shouldBe Status.BAD_GATEWAY
-      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
-    }
-
-    "translate a BadRequestFailure to 500 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
-      val result = resultFor(SignUpResult.BadRequestFailure(DownstreamService.DPS))
+    "translate BadRequest to 500 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.BadRequest, "status=400"))
       status(result) shouldBe Status.INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
     }
 
-    "translate an InternalServerFailure to 502 with a DOWNSTREAM_SERVICE_ERROR error" in {
-      val result = resultFor(SignUpResult.InternalServerFailure(DownstreamService.DPS))
+    "translate Unauthorised to 500 with a SERVICE_MISCONFIGURATION error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.Unauthorised, "status=401"))
+      status(result) shouldBe Status.INTERNAL_SERVER_ERROR
+      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.SERVICE_MISCONFIGURATION))
+    }
+
+    "translate Forbidden to 500 with a SERVICE_MISCONFIGURATION error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.Forbidden, "status=403"))
+      status(result) shouldBe Status.INTERNAL_SERVER_ERROR
+      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.SERVICE_MISCONFIGURATION))
+    }
+
+    "translate DownstreamError to 502 with a DOWNSTREAM_SERVICE_ERROR error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.DPS, Outcome.DownstreamError, "status=500"))
       status(result) shouldBe Status.BAD_GATEWAY
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR))
     }
 
-    "translate a ServiceUnavailableFailure to 502 with a DOWNSTREAM_SERVICE_UNAVAILABLE error" in {
-      val result = resultFor(SignUpResult.ServiceUnavailableFailure(DownstreamService.DPS))
+    "translate Unavailable to 502 with a DOWNSTREAM_SERVICE_UNAVAILABLE error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.DPS, Outcome.Unavailable, "status=503"))
       status(result) shouldBe Status.BAD_GATEWAY
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE))
     }
 
-    "translate an UnknownFailure to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
-      val result = resultFor(SignUpResult.UnknownFailure(DownstreamService.TAX_ENROLMENTS, Status.IM_A_TEAPOT))
+    "translate Misalignment to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.Misalignment, "status=418"))
       status(result) shouldBe Status.BAD_GATEWAY
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
     }
