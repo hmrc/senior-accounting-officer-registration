@@ -86,7 +86,7 @@ class SignUpService @Inject() (
       case Left(_) =>
         Left(etmpFailure(Outcome.Misalignment, s"status=${response.status} unparsable response body"))
       case Right(EtmpErrorResponse(errors)) =>
-        val detail = s"status=${response.status} code=${errors.code} text=${errors.text}"
+        val detail = s"status=${response.status} code=${errors.code} text=$Redacted"
         if errors.code == EtmpErrors.AlreadySubscribed then
           errors.dsaoIdNumber match {
             case Some(dsaoIdNumber) =>
@@ -120,7 +120,7 @@ class SignUpService @Inject() (
     Try(Json.parse(response.body).as[EtmpSystemError]).toOption
       .fold(downstreamDetail(response))(systemError =>
         s"status=${response.status} origin=${systemError.origin} code=${systemError.response.error.code}" +
-          s" message=${systemError.response.error.message} logID=${systemError.response.error.logID}"
+          s" message=$Redacted logID=${systemError.response.error.logID}"
       )
 
   private def downstreamDetail(response: HttpResponse): String = {
@@ -130,7 +130,6 @@ class SignUpService @Inject() (
         val failures = hipFailure.response.failures.map(f => s"${f.`type`}:${f.reason}").mkString(",")
         s"$status origin=${hipFailure.origin} failures=[$failures]"
       }
-      .orElse(Option(response.body).filter(_.nonEmpty).map(body => s"$status body=${body.take(MaxLoggedBody)}"))
       .getOrElse(status)
   }
 
@@ -144,7 +143,7 @@ class SignUpService @Inject() (
       SignUpResult.Failed(
         downstreamService,
         Outcome.Unavailable,
-        s"unreachable: ${e.getClass.getSimpleName}: ${e.getMessage}"
+        s"unreachable: ${e.getClass.getSimpleName}"
       )
     )
   }
@@ -152,7 +151,7 @@ class SignUpService @Inject() (
 
 object SignUpService {
 
-  private val MaxLoggedBody = 500
+  private val Redacted = "<redacted>"
 
   enum DownstreamService {
     case ETMP, DPS, TAX_ENROLMENTS

@@ -126,7 +126,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.DownstreamError,
-        "status=500 origin=HoD code=500 message=a message logID=89505FF7"
+        "status=500 origin=HoD code=500 message=<redacted> logID=89505FF7"
       )
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
@@ -158,7 +158,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.Unavailable,
-        "unreachable: GatewayTimeoutException: timed out"
+        "unreachable: GatewayTimeoutException"
       )
     }
 
@@ -185,7 +185,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.Misalignment,
-        "status=422 code=003 text=text for 003"
+        "status=422 code=003 text=<redacted>"
       )
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
