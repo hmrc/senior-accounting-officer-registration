@@ -16,25 +16,26 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.*
+import play.api.libs.json.{Format, Json}
 
-enum Reason {
-  case ALREADY_ENROLED
-  case UNAUTHENTICATED
-  case INVALID_CORRELATION_ID
-  case MISSING_CORRELATION_ID
-  case DOWNSTREAM_SERVICE_ERROR
-  case DOWNSTREAM_SERVICE_UNAVAILABLE
-  case DOWNSTREAM_SERVICE_MISALIGNMENT
-  case SERVICE_MISCONFIGURATION
+final case class EtmpErrors(
+    processingDate: String,
+    code: String,
+    text: String,
+    dsaoIdNumber: Option[String] = None
+)
+
+object EtmpErrors {
+  val NoMasterDataFound: String   = "001"
+  val AlreadySubscribed: String   = "002"
+  val CouldNotBeProcessed: String = "003"
+  val DuplicateSubmission: String = "004"
+
+  given Format[EtmpErrors] = Json.format[EtmpErrors]
 }
 
-object Reason {
-  given Writes[Reason] = Writes(reason => JsString(reason.toString))
-}
+final case class EtmpErrorResponse(errors: EtmpErrors)
 
-final case class ApiError(reason: Reason)
-
-object ApiError {
-  given OWrites[ApiError] = Json.writes[ApiError]
+object EtmpErrorResponse {
+  given Format[EtmpErrorResponse] = Json.format[EtmpErrorResponse]
 }

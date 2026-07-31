@@ -22,7 +22,7 @@ import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.SignUpResult
+import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
 
 import scala.concurrent.ExecutionContext
 
@@ -44,21 +44,22 @@ class SignUpController @Inject() (
       signUpService.signUp(request.body).map {
         case SignUpResult.Success(subscriptionId) =>
           Ok(Json.toJson(SignUpResponse(subscriptionId)))
-        case SignUpResult.MalformedResponse(downstreamService) =>
-          logger.warn(s"[SignUp][$downstreamService][MalformedResponse][CorrelationId=$correlationId]")
-          BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
-        case SignUpResult.BadRequestFailure(downstreamService) =>
-          logger.warn(s"[SignUp][$downstreamService][BAD_REQUEST][CorrelationId=$correlationId]")
-          InternalServerError(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
-        case SignUpResult.InternalServerFailure(downstreamService) =>
-          logger.warn(s"[SignUp][$downstreamService][INTERNAL_SERVER_ERROR][CorrelationId=$correlationId]")
-          BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR)))
-        case SignUpResult.ServiceUnavailableFailure(downstreamService) =>
-          logger.warn(s"[SignUp][$downstreamService][SERVICE_UNAVAILABLE][CorrelationId=$correlationId]")
-          BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)))
-        case SignUpResult.UnknownFailure(downstreamService, status) =>
-          logger.warn(s"[SignUp][$downstreamService][Unknown][CorrelationId=$correlationId]status=$status")
-          BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
+        case SignUpResult.Failed(downstreamService, outcome, detail) =>
+          logger.warn(
+            s"[SignUp][$downstreamService][${outcome.logMessage}][CorrelationId=$correlationId] $detail"
+          )
+          outcome match {
+            case Outcome.BadRequest =>
+              InternalServerError(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
+            case Outcome.Unauthorised | Outcome.Forbidden =>
+              InternalServerError(Json.toJson(ApiError(Reason.SERVICE_MISCONFIGURATION)))
+            case Outcome.DownstreamError =>
+              BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR)))
+            case Outcome.Unavailable =>
+              BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)))
+            case Outcome.Misalignment =>
+              BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
+          }
       }
 
   }

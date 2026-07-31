@@ -16,25 +16,22 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.*
+import play.api.libs.json.{Format, Json}
 
-enum Reason {
-  case ALREADY_ENROLED
-  case UNAUTHENTICATED
-  case INVALID_CORRELATION_ID
-  case MISSING_CORRELATION_ID
-  case DOWNSTREAM_SERVICE_ERROR
-  case DOWNSTREAM_SERVICE_UNAVAILABLE
-  case DOWNSTREAM_SERVICE_MISALIGNMENT
-  case SERVICE_MISCONFIGURATION
+final case class HipFailure(`type`: String, reason: String)
+
+object HipFailure {
+  given Format[HipFailure] = Json.format[HipFailure]
 }
 
-object Reason {
-  given Writes[Reason] = Writes(reason => JsString(reason.toString))
+final case class HipFailures(failures: Seq[HipFailure])
+
+object HipFailures {
+  given Format[HipFailures] = Json.format[HipFailures]
 }
 
-final case class ApiError(reason: Reason)
+final case class HipFailureResponse(origin: String, response: HipFailures)
 
-object ApiError {
-  given OWrites[ApiError] = Json.writes[ApiError]
+object HipFailureResponse {
+  given Format[HipFailureResponse] = Json.format[HipFailureResponse]
 }
