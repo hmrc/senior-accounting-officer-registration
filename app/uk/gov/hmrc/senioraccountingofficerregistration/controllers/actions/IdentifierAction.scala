@@ -44,12 +44,17 @@ class IdentifierAction @Inject() (
 
     authorised().retrieve(Retrievals.allEnrolments) {
       case enrolments if enrolments.isAlreadyEnroled =>
+        logger.warn(s"[FORBIDDEN][ALREADY_ENROLED] ${request.method} ${request.uri}")
         Future.successful(Forbidden(Json.toJson(ApiError(reason = Reason.ALREADY_ENROLED))))
       case _ => block(request)
     } recover {
       case _: NoActiveSession =>
+        logger.warn(s"[UNAUTHORIZED][UNAUTHENTICATED][NO_ACTIVE_SESSION] ${request.method} ${request.uri}")
         Unauthorized(Json.toJson(ApiError(reason = Reason.UNAUTHENTICATED)))
-      case _: AuthorisationException =>
+      case e: AuthorisationException =>
+        logger.warn(
+          s"[UNAUTHORIZED][UNAUTHENTICATED][${e.getClass.getSimpleName}] ${request.method} ${request.uri}"
+        )
         Unauthorized(Json.toJson(ApiError(reason = Reason.UNAUTHENTICATED)))
     }
   }

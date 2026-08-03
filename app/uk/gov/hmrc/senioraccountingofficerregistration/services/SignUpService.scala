@@ -73,7 +73,7 @@ class SignUpService @Inject() (
     response.status match {
       case CREATED =>
         Try(Json.parse(response.body).as[EtmpSuccessResponse]).toEither
-          .leftMap(_ => etmpFailure(Outcome.Misalignment, s"status=${response.status} unparsable response body"))
+          .leftMap(_ => etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
       case UNPROCESSABLE_ENTITY => sanitiseEtmpUnprocessable(response)
       case status               =>
         Left(SignUpResult.Failed(DownstreamService.ETMP, outcomeFor(status), etmpDetail(response)))
@@ -84,14 +84,14 @@ class SignUpService @Inject() (
   ): Either[SignUpResult & Failure, EtmpSuccessResponse] =
     Try(Json.parse(response.body).as[EtmpErrorResponse]).toEither match {
       case Left(_) =>
-        Left(etmpFailure(Outcome.Misalignment, s"status=${response.status} unparsable response body"))
+        Left(etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
       case Right(EtmpErrorResponse(errors)) =>
-        val detail = s"status=${response.status} code=${errors.code} text=$Redacted"
+        val detail = s"status=${response.status} code=${errors.code}"
         if errors.code == EtmpErrors.AlreadySubscribed then
           errors.dsaoIdNumber match {
             case Some(dsaoIdNumber) =>
               logger.warn(
-                s"[SignUp][${DownstreamService.ETMP}][Business Partner already subscribed]" +
+                s"[SignUp][${DownstreamService.ETMP}][ALREADY_SUBSCRIBED]" +
                   s"[CorrelationId=$correlationId] $detail - continuing registration with dsaoIdNumber"
               )
               Right(EtmpSuccessResponse(Success(errors.processingDate, dsaoIdNumber)))
@@ -120,14 +120,14 @@ class SignUpService @Inject() (
     Try(Json.parse(response.body).as[EtmpSystemError]).toOption
       .fold(downstreamDetail(response))(systemError =>
         s"status=${response.status} origin=${systemError.origin} code=${systemError.response.error.code}" +
-          s" message=$Redacted logID=${systemError.response.error.logID}"
+          s" logID=${systemError.response.error.logID}"
       )
 
   private def downstreamDetail(response: HttpResponse): String = {
     val status = s"status=${response.status}"
     Try(Json.parse(response.body).as[HipFailureResponse]).toOption
       .map { hipFailure =>
-        val failures = hipFailure.response.failures.map(f => s"${f.`type`}:${f.reason}").mkString(",")
+        val failures = hipFailure.response.failures.map(_.`type`).mkString(",")
         s"$status origin=${hipFailure.origin} failures=[$failures]"
       }
       .getOrElse(status)
@@ -151,19 +151,18 @@ class SignUpService @Inject() (
 
 object SignUpService {
 
-  private val Redacted = "<redacted>"
-
   enum DownstreamService {
     case ETMP, DPS, TAX_ENROLMENTS
   }
 
   enum Outcome(val logMessage: String) {
-    case BadRequest      extends Outcome("Bad Request")
-    case Unauthorised    extends Outcome("Unauthorised")
-    case Forbidden       extends Outcome("Forbidden")
-    case DownstreamError extends Outcome("Downstream Internal Server Error")
-    case Unavailable     extends Outcome("Service unavailable")
-    case Misalignment    extends Outcome("Downstream service misalignment")
+    case BadRequest        extends Outcome("BAD_REQUEST")
+    case Unauthorised      extends Outcome("UNAUTHORIZED")
+    case Forbidden         extends Outcome("FORBIDDEN")
+    case DownstreamError   extends Outcome("INTERNAL_SERVER_ERROR")
+    case Unavailable       extends Outcome("SERVICE_UNAVAILABLE")
+    case MalformedResponse extends Outcome("MalformedResponse")
+    case Misalignment      extends Outcome("Unknown")
   }
 
   sealed trait Failure

@@ -45,7 +45,7 @@ class SignUpController @Inject() (
         case SignUpResult.Success(subscriptionId) =>
           Ok(Json.toJson(SignUpResponse(subscriptionId)))
         case SignUpResult.Failed(downstreamService, outcome, detail) =>
-          logger.warn(
+          logger.error(
             s"[SignUp][$downstreamService][${outcome.logMessage}][CorrelationId=$correlationId] $detail"
           )
           outcome match {
@@ -57,7 +57,7 @@ class SignUpController @Inject() (
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR)))
             case Outcome.Unavailable =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)))
-            case Outcome.Misalignment =>
+            case Outcome.MalformedResponse | Outcome.Misalignment =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
           }
       }

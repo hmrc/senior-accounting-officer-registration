@@ -102,12 +102,12 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         )
     }
 
-    "return Misalignment(ETMP) and not call DPS when ETMP returns 201 with an unparsable body" in {
+    "return MalformedResponse(ETMP) and not call DPS when ETMP returns 201 with an unparsable body" in {
       val (etmpConnector, dpsConnector, _, service) = connectors()
       stubEtmp(etmpConnector, HttpResponse(Status.CREATED, "not json"))
 
       service.signUp(signUpRequest).futureValue shouldBe
-        SignUpResult.Failed(DownstreamService.ETMP, Outcome.Misalignment, "status=201 unparsable response body")
+        SignUpResult.Failed(DownstreamService.ETMP, Outcome.MalformedResponse, "status=201 unparsable response body")
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
         anyArg[HeaderCarrier]
@@ -126,7 +126,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.DownstreamError,
-        "status=500 origin=HoD code=500 message=<redacted> logID=89505FF7"
+        "status=500 origin=HoD code=500 logID=89505FF7"
       )
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
@@ -185,7 +185,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.Misalignment,
-        "status=422 code=003 text=<redacted>"
+        "status=422 code=003"
       )
 
       verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
@@ -204,7 +204,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.DPS,
         Outcome.Unavailable,
-        "status=503 origin=HIP failures=[MISSING_REQUIRED_FIELD:body.contacts]"
+        "status=503 origin=HIP failures=[MISSING_REQUIRED_FIELD]"
       )
 
       verify(taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
