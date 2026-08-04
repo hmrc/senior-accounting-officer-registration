@@ -162,7 +162,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )
     }
 
-    "continue with the returned dsaoIdNumber when ETMP returns 422 with code 002" in {
+    "return AlreadySubscribed, and continue with the returned dsaoIdNumber, when ETMP returns 422 with code 002" in {
       val (etmpConnector, dpsConnector, taxEnrolmentsConnector, service) = connectors()
       val alreadySubscribedId                                            = "XB0000493000308"
 
@@ -170,7 +170,10 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
 
-      service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Success(alreadySubscribedId)
+      service.signUp(signUpRequest).futureValue shouldBe SignUpResult.AlreadySubscribed(
+        alreadySubscribedId,
+        "status=422 code=002 - continuing registration with dsaoIdNumber"
+      )
 
       verify(dpsConnector).replaceSaoSubscription(
         ArgumentMatchers.eq(alreadySubscribedId),
@@ -178,13 +181,28 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )(using anyArg[HeaderCarrier])
     }
 
-    "return Misalignment(ETMP) when ETMP returns 422 with any other code" in {
+    "return Unprocessable(ETMP) when ETMP returns 422 with code 002 but no dsaoIdNumber" in {
+      val (etmpConnector, dpsConnector, _, service) = connectors()
+      stubEtmp(etmpConnector, etmpErrors(EtmpErrors.AlreadySubscribed))
+
+      service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+        DownstreamService.ETMP,
+        Outcome.Unprocessable,
+        "status=422 code=002 dsaoIdNumber missing"
+      )
+
+      verify(dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
+        anyArg[HeaderCarrier]
+      )
+    }
+
+    "return Unprocessable(ETMP) when ETMP returns 422 with any other code" in {
       val (etmpConnector, dpsConnector, _, service) = connectors()
       stubEtmp(etmpConnector, etmpErrors(EtmpErrors.CouldNotBeProcessed))
 
       service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
-        Outcome.Misalignment,
+        Outcome.Unprocessable,
         "status=422 code=003"
       )
 

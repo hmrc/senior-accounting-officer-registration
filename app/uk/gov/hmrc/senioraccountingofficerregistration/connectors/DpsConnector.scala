@@ -16,9 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
-import play.api.Logging
 import play.api.http.HeaderNames
-import play.api.http.Status.CREATED
 import play.api.libs.json.Json
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.*
@@ -32,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) extends Logging {
+class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(using ExecutionContext) {
 
   def replaceSaoSubscription(saoSubscriptionId: String, signUpRequest: SignUpRequest)(using
       HeaderCarrier
@@ -46,13 +44,5 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
       )
       .withBody(Json.toJson(replaceRequest))
       .execute[HttpResponse]
-      .map { response =>
-        if response.status != CREATED then
-          logger.error(s"[SignUp][DPS][API_FAILED][CorrelationId=$correlationId] status=${response.status}")
-        response
-      }
   }
-
-  private def correlationId(using hc: HeaderCarrier): String =
-    hc.extraHeaders.toMap.getOrElse("correlationId", "unknown")
 }

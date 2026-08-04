@@ -96,6 +96,20 @@ class SignUpControllerSpec
       contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
     }
 
+    "return 200 with the subscription ID when ETMP reports the business partner is already subscribed" in {
+      when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
+        .thenReturn(
+          Future.successful(
+            SignUpResult.AlreadySubscribed(signUpResponse.subscriptionId, "status=422 code=002")
+          )
+        )
+
+      val result = postSignUp(Json.toJson(signUpRequest))
+
+      status(result) shouldBe Status.OK
+      contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
+    }
+
     "return 400 with 'MISSING_CORRELATION_ID' message" in {
       val result = postSignUp(Json.toJson(signUpRequest), withCorrelationId = None)
 

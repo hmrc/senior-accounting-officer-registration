@@ -18,7 +18,6 @@ package uk.gov.hmrc.senioraccountingofficerregistration.services
 
 import cats.data.EitherT
 import cats.implicits.*
-import play.api.Logging
 import play.api.http.Status.*
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
@@ -41,18 +40,17 @@ class SignUpService @Inject() (
     etmpSubscriptionConnector: EtmpSubscriptionConnector,
     taxEnrolmentsConnector: TaxEnrolmentsConnector,
     dpsConnector: DpsConnector
-)(using ExecutionContext)
-    extends Logging {
+)(using ExecutionContext) {
 
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResult] =
     (for {
-      etmpSuccessResponse <- EitherT(
+      accepted <- EitherT(
         etmpSubscriptionConnector
           .signUp(signUpRequest)
           .map(sanitiseEtmp)
           .recover(unreachable(DownstreamService.ETMP))
       )
-      subscriptionId = etmpSuccessResponse.success.dsaoIdNumber
+      subscriptionId = accepted.response.success.dsaoIdNumber
       _ <- EitherT(
         dpsConnector
           .replaceSaoSubscription(subscriptionId, signUpRequest)
@@ -61,27 +59,24 @@ class SignUpService @Inject() (
       )
       _ <- EitherT(
         taxEnrolmentsConnector
-          .enrol(TaxEnrolmentRequest(signUpRequest, etmpSuccessResponse))
+          .enrol(TaxEnrolmentRequest(signUpRequest, accepted.response))
           .map(sanitiseTaxEnrolments)
           .recover(unreachable(DownstreamService.TAX_ENROLMENTS))
       )
-    } yield SignUpResult.Success(subscriptionId)).merge[SignUpResult]
+    } yield accepted.result(subscriptionId)).merge[SignUpResult]
 
-  private def sanitiseEtmp(response: HttpResponse)(using
-      HeaderCarrier
-  ): Either[SignUpResult & Failure, EtmpSuccessResponse] =
+  private def sanitiseEtmp(response: HttpResponse): Either[SignUpResult & Failure, EtmpAccepted] =
     response.status match {
       case CREATED =>
         Try(Json.parse(response.body).as[EtmpSuccessResponse]).toEither
           .leftMap(_ => etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
+          .map(EtmpAccepted(_, alreadySubscribed = None))
       case UNPROCESSABLE_ENTITY => sanitiseEtmpUnprocessable(response)
       case status               =>
         Left(SignUpResult.Failed(DownstreamService.ETMP, outcomeFor(status), etmpDetail(response)))
     }
 
-  private def sanitiseEtmpUnprocessable(response: HttpResponse)(using
-      HeaderCarrier
-  ): Either[SignUpResult & Failure, EtmpSuccessResponse] =
+  private def sanitiseEtmpUnprocessable(response: HttpResponse): Either[SignUpResult & Failure, EtmpAccepted] =
     Try(Json.parse(response.body).as[EtmpErrorResponse]).toEither match {
       case Left(_) =>
         Left(etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
@@ -90,14 +85,15 @@ class SignUpService @Inject() (
         if errors.code == EtmpErrors.AlreadySubscribed then
           errors.dsaoIdNumber match {
             case Some(dsaoIdNumber) =>
-              logger.warn(
-                s"[SignUp][${DownstreamService.ETMP}][ALREADY_SUBSCRIBED]" +
-                  s"[CorrelationId=$correlationId] $detail - continuing registration with dsaoIdNumber"
+              Right(
+                EtmpAccepted(
+                  EtmpSuccessResponse(Success(errors.processingDate, dsaoIdNumber)),
+                  alreadySubscribed = Some(s"$detail - continuing registration with dsaoIdNumber")
+                )
               )
-              Right(EtmpSuccessResponse(Success(errors.processingDate, dsaoIdNumber)))
-            case None => Left(etmpFailure(Outcome.Misalignment, s"$detail dsaoIdNumber missing"))
+            case None => Left(etmpFailure(Outcome.Unprocessable, s"$detail dsaoIdNumber missing"))
           }
-        else Left(etmpFailure(Outcome.Misalignment, detail))
+        else Left(etmpFailure(Outcome.Unprocessable, detail))
     }
 
   private def sanitiseDps(response: HttpResponse): Either[SignUpResult & Failure, Unit] =
@@ -133,9 +129,6 @@ class SignUpService @Inject() (
       .getOrElse(status)
   }
 
-  private def correlationId(using hc: HeaderCarrier): String =
-    hc.extraHeaders.toMap.getOrElse("correlationId", "unknown")
-
   private def unreachable[A](
       downstreamService: DownstreamService
   ): PartialFunction[Throwable, Either[SignUpResult & Failure, A]] = { case NonFatal(e) =>
@@ -151,6 +144,13 @@ class SignUpService @Inject() (
 
 object SignUpService {
 
+  private final case class EtmpAccepted(response: EtmpSuccessResponse, alreadySubscribed: Option[String]) {
+    def result(subscriptionId: String): SignUpResult =
+      alreadySubscribed.fold(SignUpResult.Success(subscriptionId))(
+        SignUpResult.AlreadySubscribed(subscriptionId, _)
+      )
+  }
+
   enum DownstreamService {
     case ETMP, DPS, TAX_ENROLMENTS
   }
@@ -159,6 +159,7 @@ object SignUpService {
     case BadRequest        extends Outcome("BAD_REQUEST")
     case Unauthorised      extends Outcome("UNAUTHORIZED")
     case Forbidden         extends Outcome("FORBIDDEN")
+    case Unprocessable     extends Outcome("UNPROCESSABLE_ENTITY")
     case DownstreamError   extends Outcome("INTERNAL_SERVER_ERROR")
     case Unavailable       extends Outcome("SERVICE_UNAVAILABLE")
     case MalformedResponse extends Outcome("MalformedResponse")
@@ -169,6 +170,7 @@ object SignUpService {
 
   enum SignUpResult {
     case Success(subscriptionId: String)
+    case AlreadySubscribed(subscriptionId: String, detail: String)
     case Failed(downstreamService: DownstreamService, outcome: Outcome, detail: String) extends SignUpResult, Failure
   }
 
@@ -177,6 +179,7 @@ object SignUpService {
       case BAD_REQUEST           => Outcome.BadRequest
       case UNAUTHORIZED          => Outcome.Unauthorised
       case FORBIDDEN             => Outcome.Forbidden
+      case UNPROCESSABLE_ENTITY  => Outcome.Unprocessable
       case INTERNAL_SERVER_ERROR => Outcome.DownstreamError
       case SERVICE_UNAVAILABLE   => Outcome.Unavailable
       case _                     => Outcome.Misalignment
