@@ -22,7 +22,7 @@ import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
 
 import scala.concurrent.ExecutionContext
 
@@ -44,6 +44,11 @@ class SignUpController @Inject() (
       signUpService.signUp(request.body).map {
         case SignUpResult.Success(subscriptionId) =>
           Ok(Json.toJson(SignUpResponse(subscriptionId)))
+        case SignUpResult.AlreadySubscribed(subscriptionId, detail) =>
+          logger.warn(
+            s"[SignUp][${DownstreamService.ETMP}][ALREADY_SUBSCRIBED][CorrelationId=$correlationId] $detail"
+          )
+          Ok(Json.toJson(SignUpResponse(subscriptionId)))
         case SignUpResult.Failed(downstreamService, outcome, detail) =>
           logger.warn(
             s"[SignUp][$downstreamService][${outcome.logMessage}][CorrelationId=$correlationId] $detail"
@@ -57,7 +62,7 @@ class SignUpController @Inject() (
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR)))
             case Outcome.Unavailable =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)))
-            case Outcome.Misalignment =>
+            case Outcome.Unprocessable | Outcome.MalformedResponse | Outcome.Misalignment =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
           }
       }
