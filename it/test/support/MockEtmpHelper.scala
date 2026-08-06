@@ -40,6 +40,12 @@ object MockEtmpHelper {
         )
     )
 
+  def mockEtmpSlow(delayMillis: Int): StubMapping =
+    stubFor(
+      post(urlEqualTo(etmpUrl))
+        .willReturn(aResponse().withStatus(201).withFixedDelay(delayMillis))
+    )
+
   def verifyEtmpWasCalled(correlationId: String, times: Int = 1): Unit =
     verify(
       times,
