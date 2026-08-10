@@ -31,7 +31,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{EmailRequest, EmailTemplate}
 
-class EmailConnectorSpec
+class EmailConnectorIntegrationSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
