@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
-import play.api.http.MimeTypes
 import play.api.libs.json.Json
 import play.api.libs.ws.writeableOf_JsValue
 import uk.gov.hmrc.http.HttpReads.Implicits.*
@@ -36,7 +35,6 @@ class EmailConnector @Inject() (appConfig: AppConfig, httpClientV2: HttpClientV2
     val url: URL = url"${appConfig.emailHost}/hmrc/email"
     httpClientV2
       .post(url)
-      .setHeader("Content-Type" -> MimeTypes.JSON)
       .withBody(Json.toJson(request))
       .execute[HttpResponse]
   }

@@ -27,7 +27,6 @@ import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{EmailRequest, EmailTemplate}
@@ -72,11 +71,19 @@ class EmailConnectorSpec
           "recipientName" -> "contact 1"
         )
       )
+      val expectedRequestBody =
+        """{
+          |  "to": ["contact1@example.com"],
+          |  "templateId": "dsao_registration_confirmation",
+          |  "parameters": {
+          |    "recipientName": "contact 1"
+          |  }
+          |}""".stripMargin
 
       wireMockServer.stubFor(
         post(urlEqualTo("/hmrc/email"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withRequestBody(equalToJson(Json.stringify(Json.toJson(request))))
+          .withRequestBody(equalToJson(expectedRequestBody))
           .willReturn(aResponse().withStatus(Status.ACCEPTED))
       )
 
