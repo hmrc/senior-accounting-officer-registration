@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services
 
-import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -123,6 +123,34 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
           generateEtmpSuccessResponse(seed = 4)
         )
         .futureValue shouldBe ()
+    }
+
+    "continue sending emails when the first connector call fails" in {
+      val emailConnector      = mock[EmailConnector]
+      val emailService        = EmailService(emailConnector, fixedClock)
+      val requestCaptor       = ArgumentCaptor.forClass(classOf[EmailRequest])
+      val signUpRequest       = generateSignUpRequest(seed = 1)
+      val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
+
+      when(emailConnector.postEmail(anyArg[EmailRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(
+          Future.failed(RuntimeException("email unavailable")),
+          Future.successful(HttpResponse(Status.ACCEPTED, ""))
+        )
+
+      emailService
+        .sendEmail(
+          EmailTemplate.RegistrationConfirmation,
+          signUpRequest,
+          etmpSuccessResponse
+        )
+        .futureValue shouldBe ()
+
+      verify(emailConnector, times(2)).postEmail(requestCaptor.capture())(using anyArg[HeaderCarrier])
+      requestCaptor.getAllValues.asScala.toSeq.map(_.to) shouldBe Seq(
+        Seq("contact1@example.com"),
+        Seq("contact2@example.com")
+      )
     }
   }
 }

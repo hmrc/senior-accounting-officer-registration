@@ -20,15 +20,11 @@ import play.api.Logging
 import play.api.http.Status.{ACCEPTED, BAD_REQUEST}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EmailConnector
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{
-  EmailRequest,
-  EmailTemplate,
-  EtmpSuccessResponse,
-  SignUpRequest
-}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+
 import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDateTime}
 import java.util.Locale
@@ -43,12 +39,12 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
     val dateTime     =
       LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
 
-    val emailRequests = for (email, recipientName) <- emailDetails.recipients yield {
+    val emailRequests = for contact <- emailDetails.contacts yield {
       val request = EmailRequest(
-        to = Seq(email),
+        to = Seq(contact.email),
         templateId = emailTemplate.templateId,
         parameters = Map(
-          "recipientName"     -> recipientName,
+          "recipientName"     -> contact.name,
           "companyName"       -> emailDetails.companyName,
           "submittedDateTime" -> dateTime,
           "referenceId"       -> emailDetails.referenceId
@@ -77,14 +73,14 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
       etmpSuccessResponse: EtmpSuccessResponse
   ): EmailDetails = {
     EmailDetails(
-      recipients = signUpRequest.contacts.map(contact => contact.email -> contact.name),
+      contacts = signUpRequest.contacts,
       companyName = signUpRequest.nominatedCompany.name,
       referenceId = etmpSuccessResponse.success.dsaoIdNumber
     )
   }
 
   private final case class EmailDetails(
-      recipients: Seq[(String, String)],
+      contacts: List[Contact],
       companyName: String,
       referenceId: String
   )
