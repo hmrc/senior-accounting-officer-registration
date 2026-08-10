@@ -21,34 +21,69 @@ import play.api.http.Status.{ACCEPTED, BAD_REQUEST}
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EmailConnector
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
 
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
-class EmailService(emailConnector: EmailConnector)(using ExecutionContext) extends Logging {
+import java.time.format.DateTimeFormatter
+import java.time.{Clock, LocalDateTime}
+import java.util.Locale
+import javax.inject.Inject
 
-  def sendEmail(emailTemplate: String, senderName: String, email: String, companyName: String, ref: String)(
-    using HeaderCarrier
+class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(using ExecutionContext) extends Logging {
+
+  def sendEmail(emailTemplate: String, signUpRequest: SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse)(using
+      HeaderCarrier
   ): Future[Unit] = {
-    
-    lazy val dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
+    val emailDetails = extractEmailDetails(signUpRequest, etmpSuccessResponse)
+    val dateTime     =
+      LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
 
     val body = Json.obj(
-      "to" -> Array(email),
+      "to"         -> Array(emailDetails.email),
       "templateId" -> emailTemplate,
       "parameters" -> Json.obj(
-        "recipientName" -> senderName,
-        "companyName" -> companyName,
+        "recipientName"     -> emailDetails.recipientName,
+        "companyName"       -> emailDetails.companyName,
         "submittedDateTime" -> dateTime,
-        "referenceId" -> ref
+        "referenceId"       -> emailDetails.referenceId
       )
     )
-    emailConnector.postEmail(Json.stringify(body), "hmrc").map {
-      case HttpResponse(ACCEPTED, body, _) => ()
-      case HttpResponse(BAD_REQUEST, body, _) => logger.warn(s"Error from HMRC email service: $body")
-    }
+
+    emailConnector
+      .postEmail(Json.stringify(body), "hmrc")
+      .map {
+        case HttpResponse(ACCEPTED, _, _)       => ()
+        case HttpResponse(BAD_REQUEST, body, _) =>
+          logger.warn(s"Error from HMRC email service: $body")
+        case HttpResponse(status, body, _) =>
+          logger.warn(s"Unexpected response from HMRC email service: status=$status body=$body")
+      }
+      .recover { case NonFatal(e) =>
+        logger.warn(s"Unable to send registration confirmation email: ${e.getClass.getSimpleName}")
+      }
   }
-  
+
+  private def extractEmailDetails(
+      signUpRequest: SignUpRequest,
+      etmpSuccessResponse: EtmpSuccessResponse
+  ): EmailDetails = {
+    val recipient = signUpRequest.contacts.head
+
+    EmailDetails(
+      recipientName = recipient.name,
+      email = recipient.email,
+      companyName = signUpRequest.nominatedCompany.name,
+      referenceId = etmpSuccessResponse.success.dsaoIdNumber
+    )
+  }
+
+  private final case class EmailDetails(
+      recipientName: String,
+      email: String,
+      companyName: String,
+      referenceId: String
+  )
+
 }

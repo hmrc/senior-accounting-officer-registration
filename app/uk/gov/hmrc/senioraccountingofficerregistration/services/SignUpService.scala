@@ -64,8 +64,16 @@ class SignUpService @Inject() (
           .map(sanitiseTaxEnrolments)
           .recover(unreachable(DownstreamService.TAX_ENROLMENTS))
       )
-      _ = emailService.sendEmail("dsao_registration_confirmation", signUpRequest.contacts.head.name, signUpRequest.contacts.head.email, signUpRequest.nominatedCompany.name, signUpRequest.etmpSafeId)
-    } yield accepted.result(subscriptionId)).merge[SignUpResult]
+    } yield (accepted.result(subscriptionId), accepted.response)).value.map {
+      case Right((result, response)) =>
+        emailService.sendEmail(
+          "dsao_registration_confirmation",
+          signUpRequest,
+          response
+        )
+        result
+      case Left(failure) => failure
+    }
 
   private def sanitiseEtmp(response: HttpResponse): Either[SignUpResult & Failure, EtmpAccepted] =
     response.status match {

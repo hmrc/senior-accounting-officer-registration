@@ -18,15 +18,17 @@ package uk.gov.hmrc.senioraccountingofficerregistration.connectors
 
 import play.api.http.MimeTypes
 import play.api.libs.ws.writeableOf_String
+import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
 
-import java.net.URL
-import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class EmailConnector @Inject()(appConfig: AppConfig, httpClientV2: HttpClientV2)(using ExecutionContext) {
+import java.net.URL
+import javax.inject.Inject
+
+class EmailConnector @Inject() (appConfig: AppConfig, httpClientV2: HttpClientV2)(using ExecutionContext) {
 
   def postEmail(body: String, domain: String)(using HeaderCarrier): Future[HttpResponse] = {
     val url: URL = url"${appConfig.emailHost}/${domain}/email"

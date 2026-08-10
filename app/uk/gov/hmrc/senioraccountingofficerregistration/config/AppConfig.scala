@@ -29,7 +29,7 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
   val appName: String = config.get[String]("appName")
 
   val emailHost: String =
-    config.get[String]("microservice.services.email.host")
+    servicesConfig.baseUrl("email")
 
   val etmpSubscriptionUrl: String =
     s"${servicesConfig.baseUrl("hip")}/etmp/RESTAdapter/dsao/subscription"
