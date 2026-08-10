@@ -18,14 +18,17 @@ package uk.gov.hmrc.senioraccountingofficerregistration.services
 
 import play.api.Logging
 import play.api.http.Status.{ACCEPTED, BAD_REQUEST}
-import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EmailConnector
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSuccessResponse, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{
+  EmailRequest,
+  EmailTemplate,
+  EtmpSuccessResponse,
+  SignUpRequest
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-
 import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDateTime}
 import java.util.Locale
@@ -33,55 +36,55 @@ import javax.inject.Inject
 
 class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(using ExecutionContext) extends Logging {
 
-  def sendEmail(emailTemplate: String, signUpRequest: SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse)(using
-      HeaderCarrier
+  def sendEmail(emailTemplate: EmailTemplate, signUpRequest: SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse)(
+      using HeaderCarrier
   ): Future[Unit] = {
     val emailDetails = extractEmailDetails(signUpRequest, etmpSuccessResponse)
     val dateTime     =
       LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
 
-    val body = Json.obj(
-      "to"         -> Array(emailDetails.email),
-      "templateId" -> emailTemplate,
-      "parameters" -> Json.obj(
-        "recipientName"     -> emailDetails.recipientName,
-        "companyName"       -> emailDetails.companyName,
-        "submittedDateTime" -> dateTime,
-        "referenceId"       -> emailDetails.referenceId
+    val emailRequests = for (email, recipientName) <- emailDetails.recipients yield {
+      val request = EmailRequest(
+        to = Seq(email),
+        templateId = emailTemplate.templateId,
+        parameters = Map(
+          "recipientName"     -> recipientName,
+          "companyName"       -> emailDetails.companyName,
+          "submittedDateTime" -> dateTime,
+          "referenceId"       -> emailDetails.referenceId
+        )
       )
-    )
 
-    emailConnector
-      .postEmail(Json.stringify(body), "hmrc")
-      .map {
-        case HttpResponse(ACCEPTED, _, _)       => ()
-        case HttpResponse(BAD_REQUEST, body, _) =>
-          logger.warn(s"Error from HMRC email service: $body")
-        case HttpResponse(status, body, _) =>
-          logger.warn(s"Unexpected response from HMRC email service: status=$status body=$body")
-      }
-      .recover { case NonFatal(e) =>
-        logger.warn(s"Unable to send registration confirmation email: ${e.getClass.getSimpleName}")
-      }
+      emailConnector
+        .postEmail(request)
+        .map {
+          case HttpResponse(ACCEPTED, _, _)    => ()
+          case HttpResponse(BAD_REQUEST, _, _) =>
+            logger.warn("Error from HMRC email service: status=400")
+          case HttpResponse(status, _, _) =>
+            logger.warn(s"Unexpected response from HMRC email service: status=$status")
+        }
+        .recover { case NonFatal(e) =>
+          logger.warn(s"Unable to send registration confirmation email: ${e.getClass.getSimpleName}")
+        }
+    }
+
+    Future.sequence(emailRequests).map(_ => ())
   }
 
   private def extractEmailDetails(
       signUpRequest: SignUpRequest,
       etmpSuccessResponse: EtmpSuccessResponse
   ): EmailDetails = {
-    val recipient = signUpRequest.contacts.head
-
     EmailDetails(
-      recipientName = recipient.name,
-      email = recipient.email,
+      recipients = signUpRequest.contacts.map(contact => contact.email -> contact.name),
       companyName = signUpRequest.nominatedCompany.name,
       referenceId = etmpSuccessResponse.success.dsaoIdNumber
     )
   }
 
   private final case class EmailDetails(
-      recipientName: String,
-      email: String,
+      recipients: Seq[(String, String)],
       companyName: String,
       referenceId: String
   )

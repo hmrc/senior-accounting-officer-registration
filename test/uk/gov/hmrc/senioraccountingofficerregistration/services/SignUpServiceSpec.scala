@@ -22,6 +22,7 @@ import org.mockito.{ArgumentCaptor, ArgumentMatchers}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar
 import play.api.http.Status
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, HttpResponse}
@@ -36,7 +37,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{D
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with TestData {
+class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with TestData {
 
   private given ExecutionContext = ExecutionContext.global
   private given HeaderCarrier    = HeaderCarrier()
@@ -56,15 +57,15 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   )
 
   private def connectors(): Fixture = {
-    val etmpConnector          = mock(classOf[EtmpSubscriptionConnector])
-    val taxEnrolmentsConnector = mock(classOf[TaxEnrolmentsConnector])
-    val dpsConnector           = mock(classOf[DpsConnector])
-    val emailService           = mock(classOf[EmailService])
+    val etmpConnector          = mock[EtmpSubscriptionConnector]
+    val taxEnrolmentsConnector = mock[TaxEnrolmentsConnector]
+    val dpsConnector           = mock[DpsConnector]
+    val emailService           = mock[EmailService]
     val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector, emailService)
 
     when(
       emailService.sendEmail(
-        anyArg[String],
+        anyArg[EmailTemplate],
         anyArg[SignUpRequest],
         anyArg[EtmpSuccessResponse]
       )(using anyArg[HeaderCarrier])
@@ -119,7 +120,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
           )
         )
       verify(fixture.emailService).sendEmail(
-        ArgumentMatchers.eq("dsao_registration_confirmation"),
+        ArgumentMatchers.eq(EmailTemplate.RegistrationConfirmation),
         ArgumentMatchers.eq(signUpRequest),
         ArgumentMatchers.eq(etmpSuccessResponse)
       )(using anyArg[HeaderCarrier])
@@ -208,7 +209,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         ArgumentMatchers.eq(signUpRequest)
       )(using anyArg[HeaderCarrier])
       verify(fixture.emailService).sendEmail(
-        ArgumentMatchers.eq("dsao_registration_confirmation"),
+        ArgumentMatchers.eq(EmailTemplate.RegistrationConfirmation),
         ArgumentMatchers.eq(signUpRequest),
         ArgumentMatchers.eq(EtmpSuccessResponse(Success("2026-01-31T10:26:17Z", alreadySubscribedId)))
       )(using anyArg[HeaderCarrier])

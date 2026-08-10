@@ -30,6 +30,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EmailRequest, EmailTemplate}
 
 class EmailConnectorSpec
     extends AnyWordSpec
@@ -63,31 +64,39 @@ class EmailConnectorSpec
   private lazy val connector  = app.injector.instanceOf[EmailConnector]
 
   "postEmail" should {
-    "post the supplied JSON body to the domain email endpoint" in {
-      val body = Json.stringify(
-        Json.obj(
-          "to"         -> Seq("contact1@example.com"),
-          "templateId" -> "dsao_registration_confirmation"
+    "post the email request to the HMRC email endpoint" in {
+      val request = EmailRequest(
+        to = Seq("contact1@example.com"),
+        templateId = EmailTemplate.RegistrationConfirmation.templateId,
+        parameters = Map(
+          "recipientName" -> "contact 1"
         )
       )
 
       wireMockServer.stubFor(
         post(urlEqualTo("/hmrc/email"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withRequestBody(equalToJson(body))
+          .withRequestBody(equalToJson(Json.stringify(Json.toJson(request))))
           .willReturn(aResponse().withStatus(Status.ACCEPTED))
       )
 
-      connector.postEmail(body, "hmrc").futureValue.status shouldBe Status.ACCEPTED
+      connector.postEmail(request).futureValue.status shouldBe Status.ACCEPTED
     }
 
     "return the raw response without throwing on a non-202 status" in {
+      val request =
+        EmailRequest(
+          to = Seq("contact1@example.com"),
+          templateId = EmailTemplate.RegistrationConfirmation.templateId,
+          parameters = Map.empty
+        )
+
       wireMockServer.stubFor(
         post(urlEqualTo("/hmrc/email"))
           .willReturn(aResponse().withStatus(Status.BAD_REQUEST).withBody("bad request"))
       )
 
-      val result = connector.postEmail("{}", "hmrc").futureValue
+      val result = connector.postEmail(request).futureValue
       result.status shouldBe Status.BAD_REQUEST
       result.body shouldBe "bad request"
     }
