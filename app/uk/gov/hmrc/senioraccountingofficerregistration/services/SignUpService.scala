@@ -39,7 +39,8 @@ import javax.inject.{Inject, Singleton}
 class SignUpService @Inject() (
     etmpSubscriptionConnector: EtmpSubscriptionConnector,
     taxEnrolmentsConnector: TaxEnrolmentsConnector,
-    dpsConnector: DpsConnector
+    dpsConnector: DpsConnector,
+    emailService: EmailService
 )(using ExecutionContext) {
 
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResult] =
@@ -63,7 +64,15 @@ class SignUpService @Inject() (
           .map(sanitiseTaxEnrolments)
           .recover(unreachable(DownstreamService.TAX_ENROLMENTS))
       )
-    } yield accepted.result(subscriptionId)).merge[SignUpResult]
+    } yield {
+      emailService.sendEmail(
+        EmailTemplate.RegistrationConfirmation,
+        signUpRequest,
+        accepted.response
+      )
+
+      accepted.result(subscriptionId)
+    }).merge[SignUpResult]
 
   private def sanitiseEtmp(response: HttpResponse): Either[SignUpResult & Failure, EtmpAccepted] =
     response.status match {

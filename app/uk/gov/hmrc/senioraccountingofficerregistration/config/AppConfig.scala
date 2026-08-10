@@ -28,6 +28,9 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
 
   val appName: String = config.get[String]("appName")
 
+  val emailHost: String =
+    servicesConfig.baseUrl("email")
+
   val etmpSubscriptionUrl: String =
     s"${servicesConfig.baseUrl("hip")}/etmp/RESTAdapter/dsao/subscription"
 
@@ -48,4 +51,5 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
 
   val dpsReplacementSaoSubscriptionAuthorization: String =
     s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
+
 }

@@ -30,17 +30,19 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{TaxEnrolmentKnownFact, TaxEnrolmentRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.TestData
+import uk.gov.hmrc.senioraccountingofficerregistration.models.EtmpSuccessResponse
 
 import java.util.UUID
 
-class TaxEnrolmentsConnectorSpec
+class EtmpSubscriptionConnectorIntegrationSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
     with IntegrationPatience
     with GuiceOneAppPerSuite
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with TestData {
 
   private val wireMockServer = WireMockServer(options().dynamicPort())
 
@@ -49,9 +51,11 @@ class TaxEnrolmentsConnectorSpec
 
     GuiceApplicationBuilder()
       .configure(
-        "microservice.services.tax-enrolments.protocol" -> "http",
-        "microservice.services.tax-enrolments.host"     -> "localhost",
-        "microservice.services.tax-enrolments.port"     -> wireMockServer.port()
+        "microservice.services.hip.protocol" -> "http",
+        "microservice.services.hip.host"     -> "localhost",
+        "microservice.services.hip.port"     -> wireMockServer.port(),
+        "microservice.services.hip.clientId" -> "some-client-id",
+        "microservice.services.hip.secret"   -> "some-client-secret"
       )
       .disable[PlayMongoModule]
       .build()
@@ -62,38 +66,51 @@ class TaxEnrolmentsConnectorSpec
     super.afterAll()
   }
 
+  private lazy val connector  = app.injector.instanceOf[EtmpSubscriptionConnector]
   private val correlationId   = UUID.randomUUID().toString
   private given HeaderCarrier = HeaderCarrier(extraHeaders = Seq("correlationId" -> correlationId))
-  private lazy val connector  = app.injector.instanceOf[TaxEnrolmentsConnector]
 
-  private val request = TaxEnrolmentRequest(
-    identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", "SAOABC123456789")),
-    verifiers = Seq(
-      TaxEnrolmentKnownFact("CTUTR", "1234567890"),
-      TaxEnrolmentKnownFact("CRN", "AB123456")
-    )
-  )
+  "signUp" should {
+    "post the sign-up request to ETMP and return the raw 201 response" in {
+      val request  = generateSignUpRequest(seed = 1)
+      val response = generateEtmpSuccessResponse(seed = 4)
 
-  "enrol" should {
-    "put the DSAO enrolment request to tax-enrolments and return the raw 2xx response" in {
-      wireMockServer.stubFor(
-        put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
-          .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
-          .withRequestBody(equalToJson(Json.stringify(Json.toJson(request))))
-          .willReturn(aResponse().withStatus(Status.NO_CONTENT))
+      val expectedEtmpRequest = Json.obj(
+        "idType"   -> "UTR",
+        "idNumber" -> request.nominatedCompany.utr
       )
 
-      connector.enrol(request).futureValue.status shouldBe Status.NO_CONTENT
+      wireMockServer.stubFor(
+        post(urlEqualTo("/etmp/RESTAdapter/dsao/subscription"))
+          .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+          .withHeader(HeaderNames.AUTHORIZATION, equalTo("Basic c29tZS1jbGllbnQtaWQ6c29tZS1jbGllbnQtc2VjcmV0"))
+          .withHeader("X-Transmitting-System", equalTo("HIP"))
+          .withHeader("X-Originating-System", equalTo("MDTP"))
+          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
+          .withHeader("X-Receipt-Date", matching("\\d{4}-\\d{2}-\\d{2}T.*Z"))
+          .withRequestBody(equalToJson(Json.stringify(expectedEtmpRequest)))
+          .willReturn(
+            aResponse()
+              .withStatus(Status.CREATED)
+              .withHeader(HeaderNames.CONTENT_TYPE, MimeTypes.JSON)
+              .withBody(Json.stringify(Json.toJson(response)))
+          )
+      )
+
+      val result = connector.signUp(request).futureValue
+      result.status shouldBe Status.CREATED
+      result.json.as[EtmpSuccessResponse] shouldBe response
     }
 
-    "return the raw response without throwing on a non-2xx status" in {
+    "return the raw response without throwing on a non-201 status" in {
+      val request = generateSignUpRequest(seed = 1)
+
       wireMockServer.stubFor(
-        put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
+        post(urlEqualTo("/etmp/RESTAdapter/dsao/subscription"))
           .willReturn(aResponse().withStatus(Status.INTERNAL_SERVER_ERROR))
       )
 
-      connector.enrol(request).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
+      connector.signUp(request).futureValue.status shouldBe Status.INTERNAL_SERVER_ERROR
     }
   }
 }

@@ -35,7 +35,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscrip
 
 import java.util.UUID
 
-class DpsConnectorSpec
+class DpsConnectorIntegrationSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
