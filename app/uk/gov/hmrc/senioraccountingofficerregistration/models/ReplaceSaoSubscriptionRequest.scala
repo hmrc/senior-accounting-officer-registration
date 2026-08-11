@@ -39,7 +39,7 @@ final case class Contact(name: String, email: String, status: String, language: 
 
 object Contact {
 
-  private[models] val emailRegex = """^[^\s@.]+(\.[^\s@.]+)*@[^\s@.]+(\.[^\s@.]+)+$""".r
+  private[models] val emailRegex = """^([a-zA-Z0-9.!#$%&’'*+/=?^_`{|}~-]+)@([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)$""".r
 
   private val reads: Reads[Contact] =
     ((JsPath \ "name").read[String] and
