@@ -31,6 +31,8 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.play.PlayMongoModule
 import uk.gov.hmrc.senioraccountingofficerregistration.models.{EmailRequest, EmailTemplate}
 
+import java.util.UUID
+
 class EmailConnectorIntegrationSpec
     extends AnyWordSpec
     with Matchers
@@ -59,7 +61,8 @@ class EmailConnectorIntegrationSpec
     super.afterAll()
   }
 
-  private given HeaderCarrier = HeaderCarrier()
+  private val correlationId   = UUID.randomUUID().toString
+  private given HeaderCarrier = HeaderCarrier(extraHeaders = Seq("correlationId" -> correlationId))
   private lazy val connector  = app.injector.instanceOf[EmailConnector]
 
   "postEmail" should {
@@ -83,6 +86,7 @@ class EmailConnectorIntegrationSpec
       wireMockServer.stubFor(
         post(urlEqualTo("/hmrc/email"))
           .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+          .withHeader("CorrelationId", equalTo(correlationId))
           .withRequestBody(equalToJson(expectedRequestBody))
           .willReturn(aResponse().withStatus(Status.ACCEPTED))
       )
