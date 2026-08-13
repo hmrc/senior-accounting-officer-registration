@@ -73,7 +73,7 @@ class DownstreamTimeoutIntegrationSpec extends ISpecBase {
               |    {
               |      "name": "Jane Doe",
               |      "email": "jane.doe@example.com",
-              |      "status": "Active",
+              |      "status": "valid",
               |      "language": "en-GB"
               |    }
               |  ]

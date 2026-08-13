@@ -14,17 +14,21 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
 
 import play.api.libs.json.*
-import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.{Contact, NominatedCompany}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.Reason
 
-final case class ReplaceSaoSubscriptionRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
-)
+final case class Crn(value: String) extends AnyVal
 
-object ReplaceSaoSubscriptionRequest {
-  given OFormat[ReplaceSaoSubscriptionRequest] = Json.format[ReplaceSaoSubscriptionRequest]
+object Crn {
+  val maxCrnLength: Int = 8
+
+  given Reads[Crn] = Json.valueReads[Crn].flatMapResult {
+    case crn if crn.value.isEmpty               => JsError(Reason.CANNOT_BE_EMPTY.toString)
+    case crn if crn.value.length > maxCrnLength => JsError(Reason.INVALID_FORMAT.toString)
+    case crn                                    => JsSuccess(crn)
+  }
+  given Writes[Crn] = Json.valueWrites
+
 }

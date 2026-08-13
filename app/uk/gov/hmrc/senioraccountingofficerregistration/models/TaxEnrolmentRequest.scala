@@ -36,12 +36,12 @@ object TaxEnrolmentRequest {
 
   given OFormat[TaxEnrolmentRequest] = Json.format[TaxEnrolmentRequest]
 
-  def apply(signUpRequest: SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse): TaxEnrolmentRequest =
+  def apply(signUpRequest: requests.SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse): TaxEnrolmentRequest =
     TaxEnrolmentRequest(
       identifiers = Seq(TaxEnrolmentKnownFact(etmpSubscriptionId, etmpSuccessResponse.success.dsaoIdNumber)),
       verifiers = Seq(
-        TaxEnrolmentKnownFact(ctutr, signUpRequest.nominatedCompany.utr),
-        TaxEnrolmentKnownFact(crn, signUpRequest.nominatedCompany.crn)
+        TaxEnrolmentKnownFact(ctutr, signUpRequest.nominatedCompany.utr.value),
+        TaxEnrolmentKnownFact(crn, signUpRequest.nominatedCompany.crn.value)
       )
     )
 }

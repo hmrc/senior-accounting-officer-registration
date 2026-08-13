@@ -74,26 +74,56 @@ class DpsConnectorIntegrationSpec
 
   "replaceSaoSubscription" should {
     "return the raw 201 response with empty payload" in {
-      val signUpRequest                 = generateSignUpRequest(2)
-      val replaceSaoSubscriptionRequest =
-        ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
-      val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
-      val subscriptionId        = "123"
+      val signUpRequest = generateSignUpRequest(2)
+
+      val expectedSignUpRequest =
+        s"""
+          |{
+          | "etmpSafeId": "${signUpRequest.etmpSafeId.value}",
+          | "nominatedCompany": {
+          |   "name": "${signUpRequest.nominatedCompany.name.value}",
+          |   "utr": "${signUpRequest.nominatedCompany.utr.value}",
+          |   "crn": "${signUpRequest.nominatedCompany.crn.value}"
+          | },
+          | "contacts": [{
+          |    "name" : "${signUpRequest.contacts.value.head.name.value}",
+          |    "email" : "${signUpRequest.contacts.value.head.email.value}",
+          |    "status" : "${signUpRequest.contacts.value.head.status}",
+          |    "language" : "${signUpRequest.contacts.value.head.language}"
+          |  }, {
+          |    "name" : "${signUpRequest.contacts.value(1).name.value}",
+          |    "email" : "${signUpRequest.contacts.value(1).email.value}",
+          |    "status" : "${signUpRequest.contacts.value(1).status}",
+          |    "language" : "${signUpRequest.contacts.value(1).language}"
+          |  } ]
+          |}""".stripMargin
+
+      val subscriptionId = "123"
 
       wireMockServer.stubFor(
-        put(s"/dapm/subscriptions/${subscriptionId}")
-          .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
-          .withRequestBody(equalToJson(Json.stringify(expectedSignUpRequest)))
-          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
+        put(s"/dapm/subscriptions/$subscriptionId")
           .willReturn(aResponse().withStatus(Status.CREATED))
       )
+
       connector.replaceSaoSubscription(subscriptionId, signUpRequest).futureValue.status shouldBe Status.CREATED
+
+      wireMockServer.verify(
+        1,
+        putRequestedFor(urlEqualTo(s"/dapm/subscriptions/$subscriptionId"))
+          .withHeader(HeaderNames.CONTENT_TYPE, containing(MimeTypes.JSON))
+          .withHeader("CorrelationId", matching("[0-9a-fA-F-]{36}"))
+          .withRequestBody(equalToJson(expectedSignUpRequest))
+      )
     }
 
     "return the raw response without throwing when DPS returns a non-201 status" in {
       val signUpRequest                 = generateSignUpRequest(2)
       val replaceSaoSubscriptionRequest =
-        ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+        ReplaceSaoSubscriptionRequest(
+          signUpRequest.etmpSafeId.value,
+          signUpRequest.nominatedCompany,
+          signUpRequest.contacts.value
+        )
       val expectedSignUpRequest = Json.toJson(replaceSaoSubscriptionRequest).as[JsObject]
       val subscriptionId        = "456"
 

@@ -20,7 +20,8 @@ import play.api.Logging
 import play.api.http.Status.{ACCEPTED, BAD_REQUEST}
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.connectors.EmailConnector
-import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.{Contact, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{EmailRequest, EmailTemplate, EtmpSuccessResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -44,10 +45,10 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
 
     val emailRequests = for contact <- emailDetails.contacts yield {
       val request = EmailRequest(
-        to = Seq(contact.email),
+        to = Seq(contact.email.value),
         templateId = emailTemplate.templateId,
         parameters = Map(
-          "recipientName"     -> contact.name,
+          "recipientName"     -> contact.name.value,
           "companyName"       -> emailDetails.companyName,
           "submittedDateTime" -> dateTime,
           "referenceId"       -> emailDetails.referenceId
@@ -78,8 +79,8 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
       etmpSuccessResponse: EtmpSuccessResponse
   ): EmailDetails = {
     EmailDetails(
-      contacts = signUpRequest.contacts,
-      companyName = signUpRequest.nominatedCompany.name,
+      contacts = signUpRequest.contacts.value,
+      companyName = signUpRequest.nominatedCompany.name.value,
       referenceId = etmpSuccessResponse.success.dsaoIdNumber
     )
   }

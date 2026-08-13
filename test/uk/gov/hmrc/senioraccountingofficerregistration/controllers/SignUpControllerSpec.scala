@@ -126,15 +126,35 @@ class SignUpControllerSpec
     }
 
     "return 400 for an unparsable request body" in {
-      val result = postSignUp(Json.obj("idType" -> "UTR"))
+      val request = FakeRequest("POST", routes.SignUpController.signUp.url)
+        .withHeaders(
+          HeaderNames.CONTENT_TYPE -> MimeTypes.JSON,
+          "CorrelationId"          -> UUID.randomUUID().toString
+        )
+        .withBody("")
+
+      val result = route(app, request).value
 
       status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe """[{"reason":"MALFORMED_REQUEST"}]"""
+    }
+
+    "return 400 for incomplete body" in {
+      val result = postSignUp(Json.obj())
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(
+        result
+      ) shouldBe """[{"reason":"MISSING_REQUIRED_FIELD","path":"/contacts"},{"reason":"MISSING_REQUIRED_FIELD","path":"/nominatedCompany"},{"reason":"MISSING_REQUIRED_FIELD","path":"/etmpSafeId"}]"""
     }
 
     "return 400 when the request contains no contacts" in {
       val body = Json.toJson(signUpRequest).as[JsObject] ++ Json.obj("contacts" -> Json.arr())
 
-      status(postSignUp(body)) shouldBe Status.BAD_REQUEST
+      val result = postSignUp(body)
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe """[{"reason":"ARRAY_MIN_ITEMS_NOT_MET","path":"/contacts"}]"""
     }
 
     "return 400 when a contact email is invalid" in {
@@ -145,13 +165,16 @@ class SignUpControllerSpec
           Json.obj(
             "name"     -> "contact 1",
             "email"    -> "not-an-email",
-            "status"   -> "active",
+            "status"   -> "valid",
             "language" -> "en-GB"
           )
         )
       )
 
-      status(postSignUp(body)) shouldBe Status.BAD_REQUEST
+      val result = postSignUp(body)
+
+      status(result) shouldBe Status.BAD_REQUEST
+      contentAsString(result) shouldBe """[{"reason":"INVALID_FORMAT","path":"/contacts(0)/email"}]"""
     }
   }
 

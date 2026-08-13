@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.helpers
 
-import play.api.libs.json.*
-import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.{Contact, NominatedCompany}
+import play.api.libs.json.Json
+import play.api.mvc.Result
+import play.api.mvc.Results.BadRequest
+import uk.gov.hmrc.senioraccountingofficerregistration.models.ApiError
+import uk.gov.hmrc.senioraccountingofficerregistration.models.Reason
 
-final case class ReplaceSaoSubscriptionRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
-)
+object JsonErrorHandling {
 
-object ReplaceSaoSubscriptionRequest {
-  given OFormat[ReplaceSaoSubscriptionRequest] = Json.format[ReplaceSaoSubscriptionRequest]
+  def malformedRequest: Result =
+    badRequest(Seq(ApiError(reason = Reason.MALFORMED_REQUEST)))
+
+  def badRequest(errors: Seq[ApiError]): Result =
+    BadRequest(Json.toJson(errors))
+
 }

@@ -20,7 +20,8 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
-import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
+import uk.gov.hmrc.senioraccountingofficerregistration.models.{ApiError, Reason, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
 
@@ -38,10 +39,11 @@ class SignUpController @Inject() (
     extends BaseController(cc)
     with Logging {
 
-  def signUp: Action[SignUpRequest] = (identify andThen ensureCorrelation).async(parse.json[SignUpRequest]) {
-    implicit request =>
+  def signUp: Action[String] = (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
+    ValidateRequest.as[SignUpRequest] { signUpRequest =>
       val correlationId = request.correlationId
-      signUpService.signUp(request.body).map {
+
+      signUpService.signUp(signUpRequest).map {
         case SignUpResult.Success(subscriptionId) =>
           Ok(Json.toJson(SignUpResponse(subscriptionId)))
         case SignUpResult.AlreadySubscribed(subscriptionId, detail) =>
@@ -66,6 +68,7 @@ class SignUpController @Inject() (
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
           }
       }
-
+    }
   }
+
 }

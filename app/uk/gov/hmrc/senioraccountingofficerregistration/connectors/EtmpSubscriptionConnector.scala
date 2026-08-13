@@ -23,7 +23,8 @@ import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{EtmpSubscriptionRequest, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.EtmpSubscriptionRequest
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -40,7 +41,7 @@ class EtmpSubscriptionConnector @Inject() (httpClient: HttpClientV2, appConfig: 
   def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[HttpResponse] =
     httpClient
       .post(url"${appConfig.etmpSubscriptionUrl}")
-      .withBody(Json.toJson(EtmpSubscriptionRequest("UTR", signUpRequest.nominatedCompany.utr)))
+      .withBody(Json.toJson(EtmpSubscriptionRequest("UTR", signUpRequest.nominatedCompany.utr.value)))
       .setHeader(
         HeaderNames.AUTHORIZATION -> appConfig.etmpSubscriptionAuthorization,
         "X-Transmitting-System"   -> "HIP",
