@@ -16,6 +16,9 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
@@ -23,6 +26,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import org.slf4j.LoggerFactory
 import play.api.http.Status
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
@@ -39,7 +43,8 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
   private given ExecutionContext = ExecutionContext.global
   private given HeaderCarrier    = HeaderCarrier()
 
-  private val fixedClock = Clock.fixed(Instant.parse("2026-08-10T14:26:00Z"), ZoneId.of("Europe/London"))
+  private val fixedClock        = Clock.fixed(Instant.parse("2026-08-10T14:26:00Z"), ZoneId.of("Europe/London"))
+  private val testCorrelationId = "e6b3b05b-1fd7-4b88-8fd5-06e7c9268885"
 
   private def serviceWith(response: Future[HttpResponse]): (EmailConnector, EmailService) = {
     val emailConnector = mock[EmailConnector]
@@ -47,6 +52,21 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
       .thenReturn(response)
 
     (emailConnector, EmailService(emailConnector, fixedClock))
+  }
+
+  private def withEmailServiceLogs[A](block: => A): (A, Seq[String]) = {
+    val emailLogger = LoggerFactory.getLogger(classOf[EmailService]).asInstanceOf[Logger]
+    val appender    = ListAppender[ILoggingEvent]()
+    appender.start()
+    emailLogger.addAppender(appender)
+
+    try {
+      val result = block
+      (result, appender.list.asScala.toSeq.map(_.getFormattedMessage))
+    } finally {
+      emailLogger.detachAppender(appender)
+      appender.stop()
+    }
   }
 
   "sendEmail" should {
@@ -91,30 +111,81 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
 
     "complete successfully when the email service returns BAD_REQUEST" in {
       val (_, emailService) = serviceWith(Future.successful(HttpResponse(Status.BAD_REQUEST, "bad request")))
+      val headerCarrier     = HeaderCarrier(extraHeaders = Seq("correlationId" -> testCorrelationId))
 
-      emailService
-        .sendEmail(
-          EmailTemplate.RegistrationConfirmation,
-          generateSignUpRequest(seed = 1),
-          generateEtmpSuccessResponse(seed = 4)
-        )
-        .futureValue shouldBe ()
+      val (result, logs) = withEmailServiceLogs {
+        emailService
+          .sendEmail(
+            EmailTemplate.RegistrationConfirmation,
+            generateSignUpRequest(seed = 1),
+            generateEtmpSuccessResponse(seed = 4)
+          )(using headerCarrier)
+          .futureValue
+      }
+
+      result shouldBe ()
+      logs should contain(s"Error from HMRC email service: status=400 [CorrelationId=$testCorrelationId]")
+    }
+
+    "complete successfully when the email service returns BAD_REQUEST without a correlation ID" in {
+      val (_, emailService) = serviceWith(Future.successful(HttpResponse(Status.BAD_REQUEST, "bad request")))
+
+      val (result, logs) = withEmailServiceLogs {
+        emailService
+          .sendEmail(
+            EmailTemplate.RegistrationConfirmation,
+            generateSignUpRequest(seed = 1),
+            generateEtmpSuccessResponse(seed = 4)
+          )
+          .futureValue
+      }
+
+      result shouldBe ()
+      logs should contain("Error from HMRC email service: status=400 [CorrelationId=not-provided]")
     }
 
     "complete successfully when the email service returns an unexpected status" in {
       val (_, emailService) = serviceWith(Future.successful(HttpResponse(Status.INTERNAL_SERVER_ERROR, "error")))
+      val headerCarrier     = HeaderCarrier(extraHeaders = Seq("correlationId" -> testCorrelationId))
 
-      emailService
-        .sendEmail(
-          EmailTemplate.RegistrationConfirmation,
-          generateSignUpRequest(seed = 1),
-          generateEtmpSuccessResponse(seed = 4)
-        )
-        .futureValue shouldBe ()
+      val (result, logs) = withEmailServiceLogs {
+        emailService
+          .sendEmail(
+            EmailTemplate.RegistrationConfirmation,
+            generateSignUpRequest(seed = 1),
+            generateEtmpSuccessResponse(seed = 4)
+          )(using headerCarrier)
+          .futureValue
+      }
+
+      result shouldBe ()
+      logs should contain(
+        s"Unexpected response from HMRC email service: status=500 [CorrelationId=$testCorrelationId]"
+      )
     }
 
     "complete successfully when the email connector fails" in {
       val (_, emailService) = serviceWith(Future.failed(RuntimeException("email unavailable")))
+      val headerCarrier     = HeaderCarrier(extraHeaders = Seq("correlationId" -> testCorrelationId))
+
+      val (result, logs) = withEmailServiceLogs {
+        emailService
+          .sendEmail(
+            EmailTemplate.RegistrationConfirmation,
+            generateSignUpRequest(seed = 1),
+            generateEtmpSuccessResponse(seed = 4)
+          )(using headerCarrier)
+          .futureValue
+      }
+
+      result shouldBe ()
+      logs should contain(
+        s"Unable to send registration confirmation email: RuntimeException [CorrelationId=$testCorrelationId]"
+      )
+    }
+
+    "complete successfully when the email service returns an unexpected status without a correlation ID" in {
+      val (_, emailService) = serviceWith(Future.successful(HttpResponse(Status.INTERNAL_SERVER_ERROR, "error")))
 
       emailService
         .sendEmail(

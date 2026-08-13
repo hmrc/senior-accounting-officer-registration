@@ -35,8 +35,11 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
   def sendEmail(emailTemplate: EmailTemplate, signUpRequest: SignUpRequest, etmpSuccessResponse: EtmpSuccessResponse)(
       using HeaderCarrier
   ): Future[Unit] = {
-    val emailDetails = extractEmailDetails(signUpRequest, etmpSuccessResponse)
-    val dateTime     =
+    val emailDetails  = extractEmailDetails(signUpRequest, etmpSuccessResponse)
+    val correlationId = summon[HeaderCarrier].extraHeaders
+      .collectFirst { case (name, value) if name.equalsIgnoreCase("correlationId") => value }
+      .fold("not-provided")(identity)
+    val dateTime =
       LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
 
     val emailRequests = for contact <- emailDetails.contacts yield {
@@ -56,12 +59,14 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
         .map {
           case HttpResponse(ACCEPTED, _, _)    => ()
           case HttpResponse(BAD_REQUEST, _, _) =>
-            logger.warn("Error from HMRC email service: status=400")
+            logger.warn(s"Error from HMRC email service: status=400 [CorrelationId=$correlationId]")
           case HttpResponse(status, _, _) =>
-            logger.warn(s"Unexpected response from HMRC email service: status=$status")
+            logger.warn(s"Unexpected response from HMRC email service: status=$status [CorrelationId=$correlationId]")
         }
         .recover { case NonFatal(e) =>
-          logger.warn(s"Unable to send registration confirmation email: ${e.getClass.getSimpleName}")
+          logger.warn(
+            s"Unable to send registration confirmation email: ${e.getClass.getSimpleName} [CorrelationId=$correlationId]"
+          )
         }
     }
 
