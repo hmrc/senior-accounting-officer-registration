@@ -54,8 +54,8 @@ class DpsConnectorIntegrationSpec
         "microservice.services.hip.protocol" -> "http",
         "microservice.services.hip.host"     -> "localhost",
         "microservice.services.hip.port"     -> wireMockServer.port(),
-        "microservice.services.hip.clientId" -> "some-client-id",
-        "microservice.services.hip.secret"   -> "some-client-secret"
+        "hip.clientId" -> "some-client-id",
+        "hip.clientSecret"   -> "some-client-secret"
       )
       .disable[PlayMongoModule]
       .build()
