@@ -41,10 +41,10 @@ class AppConfig @Inject() (servicesConfig: ServicesConfig, config: Configuration
     s"${servicesConfig.baseUrl("tax-enrolments")}/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"
 
   private val hipClientId: String =
-    config.get[String]("microservice.services.hip.clientId")
+    config.get[String]("hip.clientId")
 
   private val hipClientSecret: String =
-    config.get[String]("microservice.services.hip.secret")
+    config.get[String]("hip.clientSecret")
 
   val etmpSubscriptionAuthorization: String =
     s"Basic ${Base64.getEncoder.encodeToString(s"$hipClientId:$hipClientSecret".getBytes(StandardCharsets.UTF_8))}"
