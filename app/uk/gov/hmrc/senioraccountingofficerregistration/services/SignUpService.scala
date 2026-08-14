@@ -27,6 +27,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   TaxEnrolmentsConnector
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.*
 
 import scala.concurrent.{ExecutionContext, Future}

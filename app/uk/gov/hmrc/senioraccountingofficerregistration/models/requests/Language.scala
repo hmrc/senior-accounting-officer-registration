@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
 
 import play.api.libs.json.*
-import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.{Contact, NominatedCompany}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.Reason
 
-final case class ReplaceSaoSubscriptionRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
-)
+import scala.util.Try
 
-object ReplaceSaoSubscriptionRequest {
-  given OFormat[ReplaceSaoSubscriptionRequest] = Json.format[ReplaceSaoSubscriptionRequest]
+enum Language {
+  case `en-GB`, `cy-GB`
+}
+
+object Language {
+  given Reads[Language] = JsPath
+    .read[String]
+    .flatMapResult(name =>
+      Try(Language.valueOf(name)).toOption
+        .fold(JsError(Reason.INVALID_ENUM_VALUE.toString))(lang => JsSuccess(lang))
+    )
+  given Writes[Language] = Writes[Language](r => JsString(r.toString))
 }

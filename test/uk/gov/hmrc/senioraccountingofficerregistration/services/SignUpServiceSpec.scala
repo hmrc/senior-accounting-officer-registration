@@ -33,6 +33,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   TaxEnrolmentsConnector
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -115,8 +116,8 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         TaxEnrolmentRequest(
           identifiers = Seq(TaxEnrolmentKnownFact("EtmpSubscriptionId", subscriptionId)),
           verifiers = Seq(
-            TaxEnrolmentKnownFact("CTUTR", signUpRequest.nominatedCompany.utr),
-            TaxEnrolmentKnownFact("CRN", signUpRequest.nominatedCompany.crn)
+            TaxEnrolmentKnownFact("CTUTR", signUpRequest.nominatedCompany.utr.value),
+            TaxEnrolmentKnownFact("CRN", signUpRequest.nominatedCompany.crn.value)
           )
         )
       verify(fixture.emailService).sendEmail(

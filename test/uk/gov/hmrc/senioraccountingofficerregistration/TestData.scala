@@ -17,6 +17,7 @@
 package uk.gov.hmrc.senioraccountingofficerregistration
 
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.*
 
 import scala.util.Random
 
@@ -28,18 +29,38 @@ trait TestData {
   protected def crn(seed: Int): String =
     f"${new Random(seed).nextLong(100000000L)}%08d"
 
-  protected def generateContacts(): List[Contact] =
-    List(
-      Contact(name = "contact 1", email = "contact1@example.com", status = "active", language = "en-GB"),
-      Contact(name = "contact 2", email = "contact2@example.com", status = "active", language = "en-GB")
+  protected def generateCrn: String = crn(Random.nextInt)
+
+  protected def generateUtr: String = utr(Random.nextInt)
+
+  protected def generateAlphanumeric(length: Int): String = {
+    String(Random.alphanumeric.take(length).toArray)
+  }
+
+  protected def generateContacts(): Contacts =
+    Contacts(
+      List(
+        Contact(
+          name = PersonName("contact 1"),
+          email = Email("contact1@example.com"),
+          status = EmailStatus.valid,
+          language = Language.`en-GB`
+        ),
+        Contact(
+          name = PersonName("contact 2"),
+          email = Email("contact2@example.com"),
+          status = EmailStatus.valid,
+          language = Language.`en-GB`
+        )
+      )
     )
 
   protected def generateNominatedCompany(seed: Int): NominatedCompany =
-    NominatedCompany(name = "example company", utr = utr(seed + 1), crn = crn(seed + 2))
+    NominatedCompany(name = CompanyName("example company"), utr = Utr(utr(seed + 1)), crn = Crn(crn(seed + 2)))
 
   protected def generateSignUpRequest(seed: Int): SignUpRequest = {
     SignUpRequest(
-      etmpSafeId = "etmpSafeId",
+      etmpSafeId = EtmpSafeId("etmpSafeId"),
       contacts = generateContacts(),
       nominatedCompany = generateNominatedCompany(seed)
     )

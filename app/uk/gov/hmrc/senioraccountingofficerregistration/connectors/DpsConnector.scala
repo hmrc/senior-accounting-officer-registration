@@ -23,7 +23,8 @@ import uk.gov.hmrc.http.*
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.senioraccountingofficerregistration.config.AppConfig
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{ReplaceSaoSubscriptionRequest, SignUpRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.ReplaceSaoSubscriptionRequest
+import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -36,7 +37,11 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
       HeaderCarrier
   ): Future[HttpResponse] = {
     val replaceRequest: ReplaceSaoSubscriptionRequest =
-      ReplaceSaoSubscriptionRequest(signUpRequest.etmpSafeId, signUpRequest.nominatedCompany, signUpRequest.contacts)
+      ReplaceSaoSubscriptionRequest(
+        signUpRequest.etmpSafeId.value,
+        signUpRequest.nominatedCompany,
+        signUpRequest.contacts.value
+      )
     httpClient
       .put(url"${appConfig.dpsReplaceSaoSubscriptionUrl}/$saoSubscriptionId")
       .setHeader(

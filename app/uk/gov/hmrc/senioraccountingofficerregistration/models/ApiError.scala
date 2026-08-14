@@ -27,13 +27,26 @@ enum Reason {
   case DOWNSTREAM_SERVICE_UNAVAILABLE
   case DOWNSTREAM_SERVICE_MISALIGNMENT
   case SERVICE_MISCONFIGURATION
+  case INVALID_ENUM_VALUE
+  case ARRAY_MIN_ITEMS_NOT_MET
+  case CANNOT_BE_EMPTY
+  case INVALID_FORMAT
+  case MALFORMED_REQUEST
+  case MISSING_REQUIRED_FIELD
+  case INVALID_DATA_TYPE
 }
 
 object Reason {
   given Writes[Reason] = Writes(reason => JsString(reason.toString))
+
+  def fromErrorMessage(err: String): Reason = err match {
+    case "error.path.missing"                     => Reason.MISSING_REQUIRED_FIELD
+    case err if err.startsWith("error.expected.") => Reason.INVALID_DATA_TYPE
+    case _                                        => Reason.valueOf(err)
+  }
 }
 
-final case class ApiError(reason: Reason)
+final case class ApiError(reason: Reason, path: Option[String] = None)
 
 object ApiError {
   given OWrites[ApiError] = Json.writes[ApiError]

@@ -14,25 +14,16 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
 
-import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
 final case class SignUpRequest(
-    etmpSafeId: String,
+    etmpSafeId: EtmpSafeId,
     nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
+    contacts: Contacts
 )
 
 object SignUpRequest {
-
-  private val reads: Reads[SignUpRequest] =
-    ((JsPath \ "etmpSafeId").read[String] and
-      (JsPath \ "nominatedCompany").read[NominatedCompany] and
-      (JsPath \ "contacts")
-        .read[List[Contact]]
-        .filter(JsonValidationError("error.contacts.empty"))(_.nonEmpty))(SignUpRequest.apply)
-
-  given OFormat[SignUpRequest] = OFormat(reads, Json.writes[SignUpRequest])
+  given OFormat[SignUpRequest] = Json.format
 }

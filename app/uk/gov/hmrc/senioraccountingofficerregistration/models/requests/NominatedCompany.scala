@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models
+package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
 
-import play.api.libs.json.*
-import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.{Contact, NominatedCompany}
+import play.api.libs.json.{Json, OFormat}
 
-final case class ReplaceSaoSubscriptionRequest(
-    etmpSafeId: String,
-    nominatedCompany: NominatedCompany,
-    contacts: List[Contact]
-)
+final case class NominatedCompany(name: CompanyName, utr: Utr, crn: Crn)
 
-object ReplaceSaoSubscriptionRequest {
-  given OFormat[ReplaceSaoSubscriptionRequest] = Json.format[ReplaceSaoSubscriptionRequest]
+object NominatedCompany {
+  given OFormat[NominatedCompany] = Json.format
 }
