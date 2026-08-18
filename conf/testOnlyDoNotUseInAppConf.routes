@@ -11,3 +11,5 @@
 
 # Add all the application routes to the prod.routes file
 ->         /                          prod.Routes
+
+GET        /test-only/send-email      uk.gov.hmrc.senioraccountingofficerregistration.controllers.testOnly.TestOnlyEmailController.sendEmail(email: String, name: Option[String])
