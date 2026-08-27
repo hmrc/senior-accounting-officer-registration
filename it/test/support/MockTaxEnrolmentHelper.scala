@@ -31,6 +31,16 @@ object MockTaxEnrolmentHelper {
         )
     )
 
+  def mockTaxEnrolmentFailure(status: Int, body: String = ""): StubMapping =
+    stubFor(
+      put(urlEqualTo(taxEnrolmentUrl))
+        .willReturn(
+          aResponse()
+            .withStatus(status)
+            .withBody(body)
+        )
+    )
+
   def verifyTaxEnrolmentWasCalled(correlationId: String, times: Int = 1): Unit =
     verify(
       times,

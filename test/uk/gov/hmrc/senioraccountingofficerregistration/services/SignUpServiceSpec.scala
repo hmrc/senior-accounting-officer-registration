@@ -49,6 +49,16 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
 
   private val etmpCreated = HttpResponse(Status.CREATED, Json.stringify(Json.toJson(etmpSuccessResponse)))
 
+  private val taxEnrolmentFailures: Seq[(Int, Outcome)] = Seq(
+    Status.BAD_REQUEST           -> Outcome.BadRequest,
+    Status.UNAUTHORIZED          -> Outcome.Unauthorised,
+    Status.FORBIDDEN             -> Outcome.Forbidden,
+    Status.NOT_FOUND             -> Outcome.Misalignment,
+    Status.INTERNAL_SERVER_ERROR -> Outcome.DownstreamError,
+    Status.SERVICE_UNAVAILABLE   -> Outcome.Unavailable,
+    Status.IM_A_TEAPOT           -> Outcome.Misalignment
+  )
+
   private final case class Fixture(
       etmpConnector: EtmpSubscriptionConnector,
       dpsConnector: DpsConnector,
@@ -266,11 +276,52 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verifyNoInteractions(fixture.emailService)
     }
 
-    "return BadRequest(TAX_ENROLMENTS) when tax-enrolments returns 400" in {
+    taxEnrolmentFailures.foreach { case (status, outcome) =>
+      s"return $outcome(TAX_ENROLMENTS), after ETMP and DPS have succeeded, when tax-enrolments returns $status" in {
+        val fixture = connectors()
+        stubEtmp(fixture.etmpConnector, etmpCreated)
+        stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
+        stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(status, ""))
+
+        fixture.service.signUp(signUpRequest).futureValue shouldBe
+          SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, outcome, s"status=$status")
+
+        verify(fixture.etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest))(using anyArg[HeaderCarrier])
+        verify(fixture.dpsConnector).replaceSaoSubscription(
+          ArgumentMatchers.eq(subscriptionId),
+          ArgumentMatchers.eq(signUpRequest)
+        )(using anyArg[HeaderCarrier])
+        verify(fixture.taxEnrolmentsConnector).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
+        verifyNoInteractions(fixture.emailService)
+      }
+    }
+
+    "return Unavailable(TAX_ENROLMENTS) when the tax-enrolments call does not complete" in {
       val fixture = connectors()
       stubEtmp(fixture.etmpConnector, etmpCreated)
       stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
-      stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(Status.BAD_REQUEST, ""))
+      when(fixture.taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
+        .thenReturn(Future.failed(GatewayTimeoutException("timed out")))
+
+      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+        DownstreamService.TAX_ENROLMENTS,
+        Outcome.Unavailable,
+        "unreachable: GatewayTimeoutException"
+      )
+      verifyNoInteractions(fixture.emailService)
+    }
+
+    "keep the tax-enrolments error body out of the logged detail" in {
+      val fixture = connectors()
+      stubEtmp(fixture.etmpConnector, etmpCreated)
+      stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
+      stubTaxEnrolments(
+        fixture.taxEnrolmentsConnector,
+        HttpResponse(
+          Status.BAD_REQUEST,
+          """{"code":"INVALID_CREDENTIAL_ID","message":"user 1234 is not known to tax-enrolments"}"""
+        )
+      )
 
       fixture.service.signUp(signUpRequest).futureValue shouldBe
         SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, Outcome.BadRequest, "status=400")

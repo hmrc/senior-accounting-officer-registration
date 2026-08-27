@@ -16,6 +16,9 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.controllers
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.*
 import org.scalatest.concurrent.ScalaFutures
@@ -24,6 +27,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
+import org.slf4j.LoggerFactory
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -39,6 +43,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
 
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters.*
 
 import java.util.UUID
 
@@ -57,6 +62,17 @@ class SignUpControllerSpec
   private val signUpResponse      = SignUpResponse(etmpSuccessResponse.success.dsaoIdNumber)
 
   private val mockSignUpService = mock[SignUpService]
+
+  /** (tax-enrolments status, the outcome, the responce status, the responce reason) */
+  private val taxEnrolmentFailures: Seq[(Int, Outcome, Int, Reason)] = Seq(
+    (Status.BAD_REQUEST, Outcome.BadRequest, Status.INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
+    (Status.UNAUTHORIZED, Outcome.Unauthorised, Status.INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION),
+    (Status.FORBIDDEN, Outcome.Forbidden, Status.INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION),
+    (Status.NOT_FOUND, Outcome.Misalignment, Status.BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
+    (Status.INTERNAL_SERVER_ERROR, Outcome.DownstreamError, Status.BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_ERROR),
+    (Status.SERVICE_UNAVAILABLE, Outcome.Unavailable, Status.BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE),
+    (Status.IM_A_TEAPOT, Outcome.Misalignment, Status.BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+  )
 
   override def fakeApplication(): Application = GuiceApplicationBuilder()
     .overrides(
@@ -84,6 +100,21 @@ class SignUpControllerSpec
   }
 
   def SUT: SignUpController = app.injector.instanceOf[SignUpController]
+
+  private def withSignUpControllerLogs[A](block: => A): (A, Seq[String]) = {
+    val controllerLogger = LoggerFactory.getLogger(classOf[SignUpController]).asInstanceOf[Logger]
+    val appender         = ListAppender[ILoggingEvent]()
+    appender.start()
+    controllerLogger.addAppender(appender)
+
+    try {
+      val result = block
+      (result, appender.list.asScala.toSeq.map(_.getFormattedMessage))
+    } finally {
+      controllerLogger.detachAppender(appender)
+      appender.stop()
+    }
+  }
 
   "POST /sign-up" should {
     "return 200 with the subscription ID when the sign up succeeds" in {
@@ -218,6 +249,36 @@ class SignUpControllerSpec
       val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.Misalignment, "status=418"))
       status(result) shouldBe Status.BAD_GATEWAY
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
+    }
+  }
+
+  "POST /sign-up tax-enrolments failures" should {
+    val correlationId = UUID.randomUUID().toString
+
+    def signUpFailing(outcome: Outcome, detail: String): (Int, JsValue, Seq[String]) = {
+      when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
+        .thenReturn(Future.successful(SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, outcome, detail)))
+
+      val ((responseStatus, responseBody), logs) = withSignUpControllerLogs {
+        val result = postSignUp(Json.toJson(signUpRequest), withCorrelationId = Some(correlationId))
+        (status(result), contentAsJson(result))
+      }
+
+      (responseStatus, responseBody, logs)
+    }
+
+    taxEnrolmentFailures.foreach { case (downstreamStatus, outcome, expectedStatus, expectedReason) =>
+      s"return $expectedStatus with a $expectedReason error, and log the failure, " +
+        s"when tax-enrolments returns $downstreamStatus" in {
+          val detail                               = s"status=$downstreamStatus"
+          val (responseStatus, responseBody, logs) = signUpFailing(outcome, detail)
+
+          responseStatus shouldBe expectedStatus
+          responseBody shouldBe Json.toJson(ApiError(expectedReason))
+          logs should contain(
+            s"[SignUp][${DownstreamService.TAX_ENROLMENTS}][${outcome.logMessage}][CorrelationId=$correlationId] $detail"
+          )
+        }
     }
   }
 }
