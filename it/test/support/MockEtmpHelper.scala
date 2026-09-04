@@ -40,6 +40,18 @@ object MockEtmpHelper {
         )
     )
 
+  def mockEtmpFailure(subscriptionId: String, status: Int, body: String = ""): StubMapping =
+    stubFor(
+      post(urlEqualTo(etmpUrl))
+        .willReturn(
+          aResponse()
+            .withHeader(HeaderNames.CONTENT_TYPE, "application/json")
+            .withHeader("correlationId", "{{request.headers.correlationId}}")
+            .withBody(body)
+            .withStatus(status)
+        )
+    )
+
   def mockEtmpSlow(delayMillis: Int): StubMapping =
     stubFor(
       post(urlEqualTo(etmpUrl))

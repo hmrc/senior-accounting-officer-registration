@@ -55,6 +55,17 @@ object MockDpsHelper {
         )
     )
 
+  def mockDpsFailure(subscriptionId: String, status: Int, body: String = ""): StubMapping =
+    stubFor(
+      put(urlEqualTo(dpsUrl(subscriptionId)))
+        .willReturn(
+          aResponse()
+            .withHeader(HeaderNames.CONTENT_TYPE, "application/json")
+            .withBody(body)
+            .withStatus(status)
+        )
+    )
+
   def verifyDpsWasCalled(subscriptionId: String, correlationId: String, times: Int = 1): Unit =
     verify(
       times,
