@@ -25,6 +25,8 @@ import support.{ISpecBase, MockAuthHelper, MockDpsHelper, MockEtmpHelper, MockTa
 import uk.gov.hmrc.senioraccountingofficerregistration.SignupIntegrationSpec.*
 
 import java.util.UUID
+import scala.annotation.tailrec
+import scala.util.Random
 
 class SignupIntegrationSpec extends ISpecBase {
 
@@ -49,23 +51,7 @@ class SignupIntegrationSpec extends ISpecBase {
             HeaderNames.AUTHORIZATION -> testBearerToken,
             "correlationId"           -> testCorrelationId
           )
-          .post("""{
-              |  "etmpSafeId": "1234567890",
-              |  "nominatedCompany": {
-              |    "name": "Test Company Ltd PLC",
-              |    "utr": "2233445567",
-              |    "crn": "11223344"
-              |  },
-              |  "contacts": [
-              |    {
-              |      "name": "Jane Doe",
-              |      "email": "jane.doe@example.com",
-              |      "status": "valid",
-              |      "language": "en-GB"
-              |    }
-              |  ]
-              |}
-              |""".stripMargin)
+          .post(validRequestBodyAsString)
           .futureValue
 
       response.status mustBe 200
@@ -75,10 +61,144 @@ class SignupIntegrationSpec extends ISpecBase {
       MockDpsHelper.verifyDpsWasCalled(testSubscriptionId, testCorrelationId)
       MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId)
     }
+
+    "respond with 500 status" when {
+
+      for (etmpStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
+          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401                        -> (500, "SERVICE_MISCONFIGURATION"),
+          403                        -> (500, "SERVICE_MISCONFIGURATION"),
+          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+        )
+      do {
+        s"ETMP returns a $etmpStatus with reason=$serviceResponseReason" in {
+          MockAuthHelper.mockAuthOk()
+          MockEtmpHelper.mockEtmpFailure(testSubscriptionId, etmpStatus)
+          MockDpsHelper.mockDpsOk(testSubscriptionId)
+          MockTaxEnrolmentHelper.mockTaxEnrolmentOk()
+
+          val response =
+            wsClient
+              .url(url)
+              .withHttpHeaders(
+                HeaderNames.AUTHORIZATION -> testBearerToken,
+                "correlationId"           -> testCorrelationId
+              )
+              .post(validRequestBodyAsString)
+              .futureValue
+
+          response.status mustBe serviceResponseStatus
+          response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
+
+          MockEtmpHelper.verifyEtmpWasCalled(testCorrelationId, 1)
+          MockDpsHelper.verifyDpsWasCalled(testSubscriptionId, testCorrelationId, 0)
+          MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId, 0)
+        }
+      }
+
+      for (dpsStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
+          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401                        -> (500, "SERVICE_MISCONFIGURATION"),
+          403                        -> (500, "SERVICE_MISCONFIGURATION"),
+          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+        )
+      do {
+        s"DPS returns a $dpsStatus" in {
+          MockAuthHelper.mockAuthOk()
+          MockEtmpHelper.mockEtmpOk(testSubscriptionId)
+          MockDpsHelper.mockDpsFailure(testSubscriptionId, dpsStatus)
+          MockTaxEnrolmentHelper.mockTaxEnrolmentOk()
+
+          val response =
+            wsClient
+              .url(url)
+              .withHttpHeaders(
+                HeaderNames.AUTHORIZATION -> testBearerToken,
+                "correlationId"           -> testCorrelationId
+              )
+              .post(validRequestBodyAsString)
+              .futureValue
+
+          response.status mustBe serviceResponseStatus
+          response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
+
+          MockDpsHelper.verifyDpsWasCalled(testSubscriptionId, testCorrelationId)
+          MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId, 0)
+        }
+      }
+
+      for (taxEnrolmentStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
+          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401                        -> (500, "SERVICE_MISCONFIGURATION"),
+          403                        -> (500, "SERVICE_MISCONFIGURATION"),
+          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+        )
+      do {
+        s"Tax enrolment returns a $taxEnrolmentStatus" in {
+          MockAuthHelper.mockAuthOk()
+          MockEtmpHelper.mockEtmpOk(testSubscriptionId)
+          MockDpsHelper.mockDpsOk(testSubscriptionId)
+          MockTaxEnrolmentHelper.mockTaxEnrolmentFailure(taxEnrolmentStatus)
+
+          val response =
+            wsClient
+              .url(url)
+              .withHttpHeaders(
+                HeaderNames.AUTHORIZATION -> testBearerToken,
+                "correlationId"           -> testCorrelationId
+              )
+              .post(validRequestBodyAsString)
+              .futureValue
+
+          response.status mustBe serviceResponseStatus
+          response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
+
+          MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId)
+        }
+      }
+    }
   }
+
 }
 
 object SignupIntegrationSpec {
   implicit val stringAsJsonWriter: BodyWritable[String] =
     BodyWritable(str => InMemoryBody(ByteString.fromString(str)), "application/json")
+
+  val validRequestBodyAsString =
+    """{
+      |  "etmpSafeId": "1234567890",
+      |  "nominatedCompany": {
+      |    "name": "Test Company Ltd PLC",
+      |    "utr": "2233445567",
+      |    "crn": "11223344"
+      |  },
+      |  "contacts": [
+      |    {
+      |      "name": "Jane Doe",
+      |      "email": "jane.doe@example.com",
+      |      "status": "valid",
+      |      "language": "en-GB"
+      |    }
+      |  ]
+      |}
+      |""".stripMargin
+
+  private val expectedStatusCodes: Set[Int] = Set(
+    200, 204, 400, 401, 403, 500, 503
+  )
+
+  @tailrec
+  def randomUnexpectedStatusCode: Int =
+    Some(Random.nextInt(700))
+      .filterNot(expectedStatusCodes.contains) match {
+      case Some(unexpectedStatusCode) => unexpectedStatusCode
+      case _                          => randomUnexpectedStatusCode
+    }
 }
