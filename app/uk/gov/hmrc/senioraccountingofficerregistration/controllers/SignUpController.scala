@@ -25,8 +25,9 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{ApiError, Reason,
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
 
-import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
+
+import javax.inject.{Inject, Singleton}
 
 @Singleton()
 class SignUpController @Inject() (
