@@ -202,7 +202,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verifyNoInteractions(fixture.emailService)
     }
 
-    "return AlreadySubscribed, and continue with the returned dsaoIdNumber, when ETMP returns 422 with code 002" in {
+    "return AlreadySubscribed(ETMP) when ETMP returns 422 with code 002" in {
       val fixture             = connectors()
       val alreadySubscribedId = "XB0000493000308"
 
@@ -210,30 +210,10 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.AlreadySubscribed(
-        alreadySubscribedId,
-        "status=422 code=002 - continuing registration with dsaoIdNumber"
-      )
-
-      verify(fixture.dpsConnector).replaceSaoSubscription(
-        ArgumentMatchers.eq(alreadySubscribedId),
-        ArgumentMatchers.eq(signUpRequest)
-      )(using anyArg[HeaderCarrier])
-      verify(fixture.emailService).sendEmail(
-        ArgumentMatchers.eq(EmailTemplate.RegistrationConfirmation),
-        ArgumentMatchers.eq(signUpRequest),
-        ArgumentMatchers.eq(EtmpSuccessResponse(Success("2026-01-31T10:26:17Z", alreadySubscribedId)))
-      )(using anyArg[HeaderCarrier])
-    }
-
-    "return Unprocessable(ETMP) when ETMP returns 422 with code 002 but no dsaoIdNumber" in {
-      val fixture = connectors()
-      stubEtmp(fixture.etmpConnector, etmpErrors(EtmpErrors.AlreadySubscribed))
-
       fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
-        Outcome.Unprocessable,
-        "status=422 code=002 dsaoIdNumber missing"
+        Outcome.AlreadySubscribed,
+        "status=422 code=002"
       )
 
       verify(fixture.dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using

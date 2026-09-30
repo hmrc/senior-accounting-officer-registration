@@ -63,7 +63,7 @@ class SignUpControllerSpec
 
   private val mockSignUpService = mock[SignUpService]
 
-  /** (tax-enrolments status, the outcome, the responce status, the responce reason) */
+  /** (tax-enrolments status, the outcome, the response status, the response reason) */
   private val taxEnrolmentFailures: Seq[(Int, Outcome, Int, Reason)] = Seq(
     (Status.BAD_REQUEST, Outcome.BadRequest, Status.INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
     (Status.UNAUTHORIZED, Outcome.Unauthorised, Status.INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION),
@@ -120,20 +120,6 @@ class SignUpControllerSpec
     "return 200 with the subscription ID when the sign up succeeds" in {
       when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
         .thenReturn(Future.successful(SignUpResult.Success(signUpResponse.subscriptionId)))
-
-      val result = postSignUp(Json.toJson(signUpRequest))
-
-      status(result) shouldBe Status.OK
-      contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
-    }
-
-    "return 200 with the subscription ID when ETMP reports the business partner is already subscribed" in {
-      when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
-        .thenReturn(
-          Future.successful(
-            SignUpResult.AlreadySubscribed(signUpResponse.subscriptionId, "status=422 code=002")
-          )
-        )
 
       val result = postSignUp(Json.toJson(signUpRequest))
 
@@ -247,6 +233,12 @@ class SignUpControllerSpec
 
     "translate Misalignment to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
       val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.Misalignment, "status=418"))
+      status(result) shouldBe Status.BAD_GATEWAY
+      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
+    }
+
+    "translate AlreadySubscribed to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
+      val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.AlreadySubscribed, "status=422"))
       status(result) shouldBe Status.BAD_GATEWAY
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
     }
