@@ -80,7 +80,7 @@ class SignUpService @Inject() (
       case CREATED =>
         Try(Json.parse(response.body).as[EtmpSuccessResponse]).toEither
           .leftMap(_ => etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
-          .map(EtmpAccepted(_, alreadySubscribed = None))
+          .map(EtmpAccepted(_))
       case UNPROCESSABLE_ENTITY => sanitiseEtmpUnprocessable(response)
       case status               =>
         Left(SignUpResult.Failed(DownstreamService.ETMP, outcomeFor(status), etmpDetail(response)))
@@ -92,17 +92,7 @@ class SignUpService @Inject() (
         Left(etmpFailure(Outcome.MalformedResponse, s"status=${response.status} unparsable response body"))
       case Right(EtmpErrorResponse(errors)) =>
         val detail = s"status=${response.status} code=${errors.code}"
-        if errors.code == EtmpErrors.AlreadySubscribed then
-          errors.dsaoIdNumber match {
-            case Some(dsaoIdNumber) =>
-              Right(
-                EtmpAccepted(
-                  EtmpSuccessResponse(Success(errors.processingDate, dsaoIdNumber)),
-                  alreadySubscribed = Some(s"$detail - continuing registration with dsaoIdNumber")
-                )
-              )
-            case None => Left(etmpFailure(Outcome.Unprocessable, s"$detail dsaoIdNumber missing"))
-          }
+        if errors.code == EtmpErrors.AlreadySubscribed then Left(etmpFailure(Outcome.AlreadySubscribed, detail))
         else Left(etmpFailure(Outcome.Unprocessable, detail))
     }
 
@@ -154,11 +144,8 @@ class SignUpService @Inject() (
 
 object SignUpService {
 
-  private final case class EtmpAccepted(response: EtmpSuccessResponse, alreadySubscribed: Option[String]) {
-    def result(subscriptionId: String): SignUpResult =
-      alreadySubscribed.fold(SignUpResult.Success(subscriptionId))(
-        SignUpResult.AlreadySubscribed(subscriptionId, _)
-      )
+  private final case class EtmpAccepted(response: EtmpSuccessResponse) {
+    def result(subscriptionId: String): SignUpResult = SignUpResult.Success(subscriptionId)
   }
 
   enum DownstreamService {
@@ -173,6 +160,7 @@ object SignUpService {
     case DownstreamError   extends Outcome("INTERNAL_SERVER_ERROR")
     case Unavailable       extends Outcome("SERVICE_UNAVAILABLE")
     case MalformedResponse extends Outcome("MalformedResponse")
+    case AlreadySubscribed extends Outcome("ALREADY_SUBSCRIBED")
     case Misalignment      extends Outcome("Unknown")
   }
 
@@ -180,7 +168,6 @@ object SignUpService {
 
   enum SignUpResult {
     case Success(subscriptionId: String)
-    case AlreadySubscribed(subscriptionId: String, detail: String)
     case Failed(downstreamService: DownstreamService, outcome: Outcome, detail: String) extends SignUpResult, Failure
   }
 
