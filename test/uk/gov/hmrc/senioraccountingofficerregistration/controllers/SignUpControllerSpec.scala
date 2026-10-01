@@ -295,7 +295,7 @@ class SignUpControllerSpec
         val result = route(app, request).value
 
         status(result) shouldBe Status.ACCEPTED
-        contentAsJson(result) shouldBe Json.toJson("TestKey")
+        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(Some("TestKey"))
       }
 
       "no key is supplied" in {
@@ -308,7 +308,7 @@ class SignUpControllerSpec
         val result = route(app, request).value
 
         status(result) shouldBe Status.ACCEPTED
-        contentAsJson(result) shouldBe Json.toJson("")
+        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(None)
       }
     }
   }

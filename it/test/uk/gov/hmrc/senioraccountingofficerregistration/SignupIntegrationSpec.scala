@@ -182,7 +182,7 @@ class SignupIntegrationSpec extends ISpecBase {
           .futureValue
 
       response.status mustBe 202
-      response.body[String] mustBe "testKey"
+      response.body[String] mustBe s"""{"idempotencyKey":"testKey"}"""
     }
   }
 

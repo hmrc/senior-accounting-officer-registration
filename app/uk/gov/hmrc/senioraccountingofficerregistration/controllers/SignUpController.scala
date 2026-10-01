@@ -20,8 +20,8 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
-import uk.gov.hmrc.senioraccountingofficerregistration.models.{ApiError, Reason, SignUpResponse}
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
 
@@ -70,7 +70,7 @@ class SignUpController @Inject() (
     (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
       ValidateRequest.as[SignUpRequest] { req =>
         Future.successful(
-          Accepted(Json.toJson(req.idempotencyKey.fold("")(identity)))
+          Accepted(Json.toJson(SignUpIdempotencyResponse(req.idempotencyKey)))
         )
       }
     }
