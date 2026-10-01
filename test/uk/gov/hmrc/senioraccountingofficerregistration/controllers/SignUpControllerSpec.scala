@@ -274,41 +274,54 @@ class SignUpControllerSpec
     }
   }
 
+  private def requestWithCorrelationId(method: String, url: String) =
+    FakeRequest(method, url)
+      .withHeaders(
+        HeaderNames.CONTENT_TYPE -> MimeTypes.JSON,
+        "CorrelationId"          -> UUID.randomUUID().toString
+      )
+
   "POST /signUpWithIdempotency" should {
-    "return 202 Accepted returning the idempotency key when called" in {
-      val base = FakeRequest("POST", routes.SignUpController.signUpWithIdempotency.url)
-        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
-      val request = base
-        .withHeaders("CorrelationId" -> UUID.randomUUID().toString)
-        .withJsonBody(Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey"))))
+    "return 202 Accepted and the idempotency key" when {
+      "a key is supplied" in {
+        val request =
+          requestWithCorrelationId(
+            "POST",
+            routes.SignUpController.signUpWithIdempotency.url
+          ).withJsonBody(
+            Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey")))
+          )
 
-      val result = route(app, request).value
+        val result = route(app, request).value
 
-      status(result) shouldBe Status.ACCEPTED
-      contentAsJson(result) shouldBe Json.toJson("TestKey")
-    }
+        status(result) shouldBe Status.ACCEPTED
+        contentAsJson(result) shouldBe Json.toJson("TestKey")
+      }
 
-    "return 202 Accepted with no idempotency key when called" in {
-      val base = FakeRequest("POST", routes.SignUpController.signUpWithIdempotency.url)
-        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
-      val request =
-        base.withHeaders("CorrelationId" -> UUID.randomUUID().toString).withJsonBody(Json.toJson(signUpRequest))
+      "no key is supplied" in {
+        val request =
+          requestWithCorrelationId(
+            "POST",
+            routes.SignUpController.signUpWithIdempotency.url
+          ).withJsonBody(Json.toJson(signUpRequest))
 
-      val result = route(app, request).value
+        val result = route(app, request).value
 
-      status(result) shouldBe Status.ACCEPTED
-      contentAsJson(result) shouldBe Json.toJson("")
+        status(result) shouldBe Status.ACCEPTED
+        contentAsJson(result) shouldBe Json.toJson("")
+      }
     }
   }
 
   "GET /getStateOfWorkItem" should {
-    "return 204 No Content when called" in {
-      val base = FakeRequest("GET", routes.SignUpController.getStateOfWorkItem("TestKey").url)
-        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+    "return 204 No Content" in {
+      val request =
+        requestWithCorrelationId(
+          "GET",
+          routes.SignUpController.getStateOfWorkItem("TestKey").url
+        )
 
-      val result = route(app, base.withHeaders("CorrelationId" -> UUID.randomUUID().toString)).value
-
-      status(result) shouldBe Status.NO_CONTENT
+      status(route(app, request).value) shouldBe Status.NO_CONTENT
     }
   }
 }
