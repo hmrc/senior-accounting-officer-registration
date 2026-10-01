@@ -273,4 +273,42 @@ class SignUpControllerSpec
         }
     }
   }
+
+  "POST /signUpWithIdempotency" should {
+    "return 202 Accepted returning the idempotency key when called" in {
+      val base = FakeRequest("POST", routes.SignUpController.signUpWithIdempotency.url)
+        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+      val request = base
+        .withHeaders("CorrelationId" -> UUID.randomUUID().toString)
+        .withJsonBody(Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey"))))
+
+      val result = route(app, request).value
+
+      status(result) shouldBe Status.ACCEPTED
+      contentAsJson(result) shouldBe Json.toJson("TestKey")
+    }
+
+    "return 202 Accepted with no idempotency key when called" in {
+      val base = FakeRequest("POST", routes.SignUpController.signUpWithIdempotency.url)
+        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+      val request =
+        base.withHeaders("CorrelationId" -> UUID.randomUUID().toString).withJsonBody(Json.toJson(signUpRequest))
+
+      val result = route(app, request).value
+
+      status(result) shouldBe Status.ACCEPTED
+      contentAsJson(result) shouldBe Json.toJson("")
+    }
+  }
+
+  "GET /getStateOfWorkItem" should {
+    "return 204 No Content when called" in {
+      val base = FakeRequest("GET", routes.SignUpController.getStateOfWorkItem("TestKey").url)
+        .withHeaders(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON)
+
+      val result = route(app, base.withHeaders("CorrelationId" -> UUID.randomUUID().toString)).value
+
+      status(result) shouldBe Status.NO_CONTENT
+    }
+  }
 }

@@ -21,7 +21,8 @@ import play.api.libs.json.*
 final case class SignUpRequest(
     etmpSafeId: EtmpSafeId,
     nominatedCompany: NominatedCompany,
-    contacts: Contacts
+    contacts: Contacts,
+    idempotencyKey: Option[String] = None
 )
 
 object SignUpRequest {

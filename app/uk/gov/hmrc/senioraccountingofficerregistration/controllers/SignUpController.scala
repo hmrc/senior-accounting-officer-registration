@@ -25,7 +25,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.{ApiError, Reason,
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 import javax.inject.{Inject, Singleton}
 
@@ -66,4 +66,17 @@ class SignUpController @Inject() (
     }
   }
 
+  def signUpWithIdempotency: Action[String] =
+    (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
+      ValidateRequest.as[SignUpRequest] { req =>
+        Future.successful(
+          Accepted(Json.toJson(req.idempotencyKey.fold("")(identity)))
+        )
+      }
+    }
+
+  def getStateOfWorkItem(idempotencyKey: String): Action[String] =
+    (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
+      Future.successful(NoContent)
+    }
 }
