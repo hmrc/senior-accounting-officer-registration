@@ -287,7 +287,7 @@ class SignUpControllerSpec
         val request =
           requestWithCorrelationId(
             "POST",
-            routes.SignUpController.signUpWithIdempotency.url
+            routes.SignUpController.signUpWithFaultTolerance.url
           ).withJsonBody(
             Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey")))
           )
@@ -302,7 +302,7 @@ class SignUpControllerSpec
         val request =
           requestWithCorrelationId(
             "POST",
-            routes.SignUpController.signUpWithIdempotency.url
+            routes.SignUpController.signUpWithFaultTolerance.url
           ).withJsonBody(Json.toJson(signUpRequest))
 
         val result = route(app, request).value

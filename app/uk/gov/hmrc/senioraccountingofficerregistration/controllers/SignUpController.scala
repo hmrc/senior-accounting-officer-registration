@@ -66,7 +66,7 @@ class SignUpController @Inject() (
     }
   }
 
-  def signUpWithIdempotency: Action[String] =
+  def signUpWithFaultTolerance: Action[String] =
     (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
       ValidateRequest.as[SignUpRequest] { req =>
         Future.successful(

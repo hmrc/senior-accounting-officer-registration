@@ -6,5 +6,5 @@
 POST       /sign-up                         uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUp
 
 # New fault tolerant endpoints
-POST       /v2/sign-up                      uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUpWithIdempotency
+POST       /v2/sign-up                      uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUpWithFaultTolerance
 GET        /v2/sign-up/:idempotencyKey      uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.getStateOfWorkItem(idempotencyKey: String)
