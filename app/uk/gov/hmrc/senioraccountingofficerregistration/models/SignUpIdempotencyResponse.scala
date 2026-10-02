@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
+package uk.gov.hmrc.senioraccountingofficerregistration.models
 
-import play.api.libs.json.*
+import play.api.libs.json.{Json, OFormat}
 
-final case class SignUpRequest(
-    etmpSafeId: EtmpSafeId,
-    nominatedCompany: NominatedCompany,
-    contacts: Contacts,
-    idempotencyKey: Option[String] = None
-)
+case class SignUpIdempotencyResponse(idempotencyKey: Option[String])
 
-object SignUpRequest {
-  given OFormat[SignUpRequest] = Json.format
+object SignUpIdempotencyResponse {
+  given OFormat[SignUpIdempotencyResponse] = Json.format[SignUpIdempotencyResponse]
 }

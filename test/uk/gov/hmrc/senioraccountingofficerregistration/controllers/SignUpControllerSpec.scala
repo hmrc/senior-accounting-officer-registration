@@ -273,4 +273,55 @@ class SignUpControllerSpec
         }
     }
   }
+
+  private def requestWithCorrelationId(method: String, url: String) =
+    FakeRequest(method, url)
+      .withHeaders(
+        HeaderNames.CONTENT_TYPE -> MimeTypes.JSON,
+        "CorrelationId"          -> UUID.randomUUID().toString
+      )
+
+  "POST /signUpWithFaultTolerance" should {
+    "return 202 Accepted and the idempotency key" when {
+      "a key is supplied" in {
+        val request =
+          requestWithCorrelationId(
+            "POST",
+            routes.SignUpController.signUpWithFaultTolerance.url
+          ).withJsonBody(
+            Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey")))
+          )
+
+        val result = route(app, request).value
+
+        status(result) shouldBe Status.ACCEPTED
+        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(Some("TestKey"))
+      }
+
+      "no key is supplied" in {
+        val request =
+          requestWithCorrelationId(
+            "POST",
+            routes.SignUpController.signUpWithFaultTolerance.url
+          ).withJsonBody(Json.toJson(signUpRequest))
+
+        val result = route(app, request).value
+
+        status(result) shouldBe Status.ACCEPTED
+        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(None)
+      }
+    }
+  }
+
+  "GET /getStateOfWorkItem" should {
+    "return 204 No Content" in {
+      val request =
+        requestWithCorrelationId(
+          "GET",
+          routes.SignUpController.getStateOfWorkItem("TestKey").url
+        )
+
+      status(route(app, request).value) shouldBe Status.NO_CONTENT
+    }
+  }
 }
