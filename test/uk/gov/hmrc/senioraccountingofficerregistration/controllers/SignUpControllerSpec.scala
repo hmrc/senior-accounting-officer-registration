@@ -281,7 +281,7 @@ class SignUpControllerSpec
         "CorrelationId"          -> UUID.randomUUID().toString
       )
 
-  "POST /signUpWithIdempotency" should {
+  "POST /signUpWithFaultTolerance" should {
     "return 202 Accepted and the idempotency key" when {
       "a key is supplied" in {
         val request =
