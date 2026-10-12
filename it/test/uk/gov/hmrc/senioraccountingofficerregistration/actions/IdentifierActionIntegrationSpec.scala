@@ -29,6 +29,7 @@ class IdentifierActionIntegrationSpec extends ISpecBase {
 
   override def applicationBuilder: GuiceApplicationBuilder =
     GuiceApplicationBuilder()
+      .configure("work-items.enabled" -> false)
       .appRoutes { app =>
         val identifierAction = app.injector.instanceOf[IdentifierAction]
 

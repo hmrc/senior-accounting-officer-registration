@@ -17,6 +17,7 @@
 package uk.gov.hmrc.senioraccountingofficerregistration.config
 
 import com.google.inject.AbstractModule
+import uk.gov.hmrc.senioraccountingofficerregistration.services.registration.RegistrationPoller
 
 import java.time.{Clock, ZoneId}
 
@@ -24,6 +25,7 @@ class Module extends AbstractModule {
 
   override def configure(): Unit = {
 
+    bind(classOf[RegistrationPoller]).asEagerSingleton()
     bind(classOf[AppConfig]).asEagerSingleton()
     bind(classOf[Clock]).toInstance(Clock.system(ZoneId.of("Europe/London")))
   }

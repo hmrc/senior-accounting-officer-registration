@@ -70,7 +70,8 @@ abstract class ISpecBase
       "play.ws.followRedirects"                   -> "false"
     ) ++ additionalConfigs
 
-  protected def applicationBuilder: GuiceApplicationBuilder = GuiceApplicationBuilder()
+  protected def applicationBuilder: GuiceApplicationBuilder =
+    GuiceApplicationBuilder().configure("work-items.enabled" -> false)
 
   final override def fakeApplication(): Application =
     applicationBuilder

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.services
+package uk.gov.hmrc.senioraccountingofficerregistration.services.legacy
 
 import cats.data.EitherT
 import cats.implicits.*
@@ -28,7 +28,8 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.*
+import uk.gov.hmrc.senioraccountingofficerregistration.services.EmailService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService.*
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -145,6 +146,7 @@ class SignUpService @Inject() (
 object SignUpService {
 
   private final case class EtmpAccepted(response: EtmpSuccessResponse) {
+
     def result(subscriptionId: String): SignUpResult = SignUpResult.Success(subscriptionId)
   }
 

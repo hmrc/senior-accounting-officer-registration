@@ -33,6 +33,7 @@ class EnsureCorrelationIdActionIntegrationSpec extends ISpecBase with MockitoSug
 
   override def applicationBuilder: GuiceApplicationBuilder =
     GuiceApplicationBuilder()
+      .configure("work-items.enabled" -> false)
       .appRoutes { app =>
         val testIdentifierAction: ActionBuilder[Request, AnyContent] =
           new ActionBuilder[Request, AnyContent] {

@@ -19,6 +19,9 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models
 import play.api.libs.json.*
 
 enum Reason {
+  case IDEMPOTENCY_KEY_CONFLICT
+  case NOT_FOUND
+  case LENGTH_OUT_OF_BOUNDS
   case ALREADY_ENROLED
   case UNAUTHENTICATED
   case INVALID_CORRELATION_ID
@@ -37,6 +40,14 @@ enum Reason {
 }
 
 object Reason {
+  given Reads[Reason] = Reads { json =>
+    json
+      .validate[String]
+      .flatMap(value =>
+        scala.util.Try(Reason.valueOf(value)).fold(_ => JsError("Invalid API error reason"), JsSuccess(_))
+      )
+  }
+
   given Writes[Reason] = Writes(reason => JsString(reason.toString))
 
   def fromErrorMessage(err: String): Reason = err match {

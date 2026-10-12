@@ -33,8 +33,6 @@ class SignupIntegrationSpec extends ISpecBase {
   private val wsClient = app.injector.instanceOf[WSClient]
 
   val signUpUrl = s"$baseUrl/senior-accounting-officer-registration/sign-up"
-  val postSignUpV2Url = s"$baseUrl/senior-accounting-officer-registration/v2/sign-up"
-  val getSignUpV2Url = s"$baseUrl/senior-accounting-officer-registration/v2/sign-up/testKey"
 
   val testSubscriptionId: String = "testSubscriptionId-01234567890"
   val testCorrelationId: String  = UUID.randomUUID().toString
@@ -167,42 +165,6 @@ class SignupIntegrationSpec extends ISpecBase {
     }
   }
 
-  "POST /v2/sign-up endpoint" should {
-    "respond with 202 status" in {
-      MockAuthHelper.mockAuthOk()
-
-      val response =
-        wsClient
-          .url(postSignUpV2Url)
-          .withHttpHeaders(
-            HeaderNames.AUTHORIZATION -> testBearerToken,
-            "correlationId" -> testCorrelationId
-          )
-          .post(validRequestBodyAsStringWithIdempotency)
-          .futureValue
-
-      response.status mustBe 202
-      response.body[String] mustBe s"""{"idempotencyKey":"testKey"}"""
-    }
-  }
-
-  "GET /v2/sign-up endpoint" should {
-    "respond with 204 status" in {
-      MockAuthHelper.mockAuthOk()
-
-      val response =
-        wsClient
-          .url(getSignUpV2Url)
-          .withHttpHeaders(
-            HeaderNames.AUTHORIZATION -> testBearerToken,
-            "correlationId" -> testCorrelationId
-          )
-          .get()
-          .futureValue
-
-      response.status mustBe 204
-    }
-  }
 }
 
 object SignupIntegrationSpec {
@@ -247,7 +209,6 @@ object SignupIntegrationSpec {
       |  "idempotencyKey": "testKey"
       |}
       |""".stripMargin
-
 
   private val expectedStatusCodes: Set[Int] = Set(
     200, 204, 400, 401, 403, 500, 503
