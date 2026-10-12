@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.controllers.legacy
+package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -39,8 +39,8 @@ import play.api.{Application, inject}
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{FakeIdentifierAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
-import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService.{
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{
   DownstreamService,
   Outcome,
   SignUpResult
@@ -67,7 +67,6 @@ class SignUpControllerSpec
 
   private val mockSignUpService = mock[SignUpService]
 
-  /** (tax-enrolments status, the outcome, the response status, the response reason) */
   private val taxEnrolmentFailures: Seq[(Int, Outcome, Int, Reason)] = Seq(
     (Status.BAD_REQUEST, Outcome.BadRequest, Status.INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
     (Status.UNAUTHORIZED, Outcome.Unauthorised, Status.INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION),

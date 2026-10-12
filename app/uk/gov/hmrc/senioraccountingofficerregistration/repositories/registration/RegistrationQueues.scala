@@ -25,7 +25,6 @@ import scala.concurrent.ExecutionContext
 import java.time.Clock
 import javax.inject.{Inject, Singleton}
 
-// Each orchestrated step has a distinct repository instance and collection.
 @Singleton
 class RegistrationQueues @Inject() (mongo: MongoComponent, configuration: Configuration, clock: Clock)(using
     ExecutionContext

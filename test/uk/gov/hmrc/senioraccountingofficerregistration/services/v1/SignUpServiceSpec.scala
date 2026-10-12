@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.services.legacy
+package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
 import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
@@ -35,7 +35,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.EmailService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService.{
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{
   DownstreamService,
   Outcome,
   SignUpResult

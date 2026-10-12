@@ -58,7 +58,6 @@ class RegistrationWorkRepository(
   def enqueue(command: RegistrationCommand): Future[RegistrationCommand] = {
     require(command.step == step)
     val key = Filters.equal("item.commandKey", command.commandKey)
-    // An expired request key can be reused even before Mongo's TTL monitor runs.
     for {
       _         <- collection.deleteOne(Filters.and(key, Filters.lte("item.expiresAt", now()))).toFuture()
       persisted <- pushNew(command).map(_.item).recoverWith {

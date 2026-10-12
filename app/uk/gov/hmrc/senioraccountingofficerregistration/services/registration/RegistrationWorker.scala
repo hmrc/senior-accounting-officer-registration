@@ -85,7 +85,6 @@ class RegistrationWorker @Inject() (
   private def handoff(repository: RegistrationWorkRepository, finished: WorkItem[RegistrationCommand]): Future[Unit] =
     for {
       _ <- repository.heartbeat(finished)
-      // Results are durable before status publication or successor creation.
       _ <- publish(finished.item)
       _ <- Future.traverse(finished.item.successors) { next =>
         for {
@@ -137,7 +136,6 @@ class RegistrationWorker @Inject() (
       HeaderCarrier
   ): Future[Option[WorkItem[RegistrationCommand]]] = {
     val command = work.item
-    // Count dispatches durably, including attempts interrupted by a process restart.
     if command.attempts >= retryDelays.size + 1 then
       repository
         .save(
@@ -173,9 +171,6 @@ class RegistrationWorker @Inject() (
   }
 
   private val retentionOrder = List(Etmp, Dps, TaxEnrolments, Email, Audit)
-
-  // A parent only finishes after its successors are persisted. Read parents before successors,
-  // awaiting each result, so a handoff cannot move active work behind the retention scan.
 
   private def isActiveOrchestration(orchestrationId: String): Future[Boolean] = {
     def loop(remaining: List[RegistrationStep]): Future[Boolean] = remaining match {

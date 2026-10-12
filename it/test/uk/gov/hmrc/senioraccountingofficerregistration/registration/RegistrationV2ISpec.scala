@@ -131,7 +131,6 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
           .withHeader("correlationId", equalTo(correlationId))
           .withRequestBody(matchingJsonPath("$.parameters.referenceId", equalTo(subscriptionId)))
       )
-      // Background calls follow the sibling's correlation-only HeaderCarrier contract.
       verify(
         1,
         putRequestedFor(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.controllers.legacy
+package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
 import play.api.Logging
 import play.api.libs.json.Json
@@ -23,8 +23,8 @@ import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{Ensu
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.{BaseController, ValidateRequest}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
-import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.legacy.SignUpService.{Outcome, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{Outcome, SignUpResult}
 
 import scala.concurrent.ExecutionContext
 

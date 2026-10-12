@@ -1,0 +1,47 @@
+info:
+  name: (202) submit registration
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v2/sign-up"
+  headers:
+    - name: Authorization
+      value: "{{authorization}}"
+    - name: correlationId
+      value: "{{$randomUUID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "etmpSafeId": "1234567890",
+        "nominatedCompany": {
+          "name": "Test Company Ltd PLC",
+          "utr": "2233445567",
+          "crn": "11223344"
+        },
+        "contacts": [
+          {
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "status": "valid",
+            "language": "en-GB"
+          }
+        ],
+        "idempotencyKey": "{{$randomUUID}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 202) {
+          bru.setVar('registrationIdempotencyKey', res.body.idempotencyKey);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

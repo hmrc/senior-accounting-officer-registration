@@ -1,6 +1,4 @@
-# Synchronous API retained for existing callers
-POST /sign-up uk.gov.hmrc.senioraccountingofficerregistration.controllers.legacy.SignUpController.signUp
+POST /sign-up uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1.SignUpController.signUp
 
-# Durable registration API
 POST /v2/sign-up uk.gov.hmrc.senioraccountingofficerregistration.controllers.v2.SignUpController.signUp
 GET /v2/sign-up/:idempotencyKey uk.gov.hmrc.senioraccountingofficerregistration.controllers.v2.SignUpController.status(idempotencyKey: String)

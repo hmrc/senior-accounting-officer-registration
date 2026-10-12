@@ -33,7 +33,7 @@ sbt lint
 
 All routes below use the `/senior-accounting-officer-registration` prefix and require authentication and a UUID `correlationId` header.
 
-`POST /sign-up` retains its synchronous behavior. Its controller and service live in `legacy` packages; the connectors and shared request models are unchanged.
+`POST /sign-up` retains its synchronous behavior. Its controller and service live in `v1` packages; the connectors and shared request models are unchanged.
 
 `POST /v2/sign-up` accepts the existing signup JSON with a required `idempotencyKey` (nonblank, at most 256 characters). It returns `202 {"idempotencyKey":"..."}` after the initial work item and status are persisted. Keys are scoped to the authenticated internal user ID. Repeating the same request returns the same key; changing its payload returns 409 with `IDEMPOTENCY_KEY_CONFLICT`. An enrolled owner can replay an existing request, but cannot start a new registration.
 
