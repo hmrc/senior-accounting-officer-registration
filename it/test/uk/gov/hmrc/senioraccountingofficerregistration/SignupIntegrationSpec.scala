@@ -25,8 +25,6 @@ import support.{ISpecBase, MockAuthHelper, MockDpsHelper, MockEtmpHelper, MockTa
 import uk.gov.hmrc.senioraccountingofficerregistration.SignupIntegrationSpec.*
 
 import java.util.UUID
-import scala.annotation.tailrec
-import scala.util.Random
 
 class SignupIntegrationSpec extends ISpecBase {
 
@@ -70,7 +68,7 @@ class SignupIntegrationSpec extends ISpecBase {
           403                        -> (500, "SERVICE_MISCONFIGURATION"),
           500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
           503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"ETMP returns a $etmpStatus with reason=$serviceResponseReason" in {
@@ -104,7 +102,7 @@ class SignupIntegrationSpec extends ISpecBase {
           403                        -> (500, "SERVICE_MISCONFIGURATION"),
           500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
           503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"DPS returns a $dpsStatus" in {
@@ -137,7 +135,7 @@ class SignupIntegrationSpec extends ISpecBase {
           403                        -> (500, "SERVICE_MISCONFIGURATION"),
           500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
           503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          randomUnexpectedStatusCode -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"Tax enrolment returns a $taxEnrolmentStatus" in {
@@ -210,15 +208,4 @@ object SignupIntegrationSpec {
       |}
       |""".stripMargin
 
-  private val expectedStatusCodes: Set[Int] = Set(
-    200, 204, 400, 401, 403, 500, 503
-  )
-
-  @tailrec
-  def randomUnexpectedStatusCode: Int =
-    Some(Random.nextInt(700))
-      .filterNot(expectedStatusCodes.contains) match {
-      case Some(unexpectedStatusCode) => unexpectedStatusCode
-      case _                          => randomUnexpectedStatusCode
-    }
 }
