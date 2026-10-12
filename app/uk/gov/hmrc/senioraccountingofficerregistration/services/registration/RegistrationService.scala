@@ -32,12 +32,14 @@ class RegistrationService @Inject() (queues: RegistrationQueues, states: Registr
     using ExecutionContext
 ) {
 
+  private val maxIdempotencyKeyLength = 256
+
   def submit(internalId: String, enrolled: Boolean, correlationId: String, request: SignUpRequest): Future[Result] = {
     val validation = request.idempotencyKey match {
-      case None                          => Some(Reason.MISSING_REQUIRED_FIELD)
-      case Some(key) if key.trim.isEmpty => Some(Reason.CANNOT_BE_EMPTY)
-      case Some(key) if key.length > 256 => Some(Reason.LENGTH_OUT_OF_BOUNDS)
-      case _                             => None
+      case None                                              => Some(Reason.MISSING_REQUIRED_FIELD)
+      case Some(key) if key.trim.isEmpty                     => Some(Reason.CANNOT_BE_EMPTY)
+      case Some(key) if key.length > maxIdempotencyKeyLength => Some(Reason.LENGTH_OUT_OF_BOUNDS)
+      case _                                                 => None
     }
     validation match {
       case Some(reason) =>

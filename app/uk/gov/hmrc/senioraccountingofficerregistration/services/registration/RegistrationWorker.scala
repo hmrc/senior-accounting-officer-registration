@@ -48,10 +48,12 @@ class RegistrationWorker @Inject() (
 )(using ExecutionContext)
     extends Logging {
 
-  private val queueCounts = TrieMap.empty[String, AtomicInteger]
-  private val timeout     = config.get[Long]("work-items.operation-timeout-seconds").seconds
-  private val lease       = config.get[Long]("work-items.lease-seconds")
-  require(timeout.toSeconds < lease, "Operation timeout must be shorter than the work item lease")
+  private val heartbeatDivisor = 3
+  private val operationTimeout = config.get[Long]("work-items.operation-timeout-seconds").seconds
+  private val leaseDuration    = config.get[Long]("work-items.lease-seconds")
+  private val retentionSeconds = config.get[Long]("work-items.retention-seconds")
+  private val queueCounts      = TrieMap.empty[String, AtomicInteger]
+  require(operationTimeout.toSeconds < leaseDuration, "Operation timeout must be shorter than the work item lease")
 
   def processNext(step: RegistrationStep): Future[Unit] = {
     val repository = queues(step)
@@ -63,15 +65,16 @@ class RegistrationWorker @Inject() (
 
   private def process(repository: RegistrationWorkRepository, work: WorkItem[RegistrationCommand]): Future[Unit] = {
     given HeaderCarrier   = HeaderCarrier(extraHeaders = Seq("correlationId" -> work.item.data.correlationId))
-    val heartbeatInterval = (lease / 3).seconds
+    val heartbeatInterval = (leaseDuration / heartbeatDivisor).seconds
     val heartbeat         = actorSystem.scheduler.scheduleWithFixedDelay(heartbeatInterval, heartbeatInterval) { () =>
       repository.heartbeat(work).recover { case NonFatal(_) => () }
       ()
     }
     val processing = for {
       _        <- if work.item.step == Etmp then states.initialize(work.item.data) else Future.unit
-      finished <- if work.item.operationFinished then Future.successful(Some(work)) else perform(repository, work)
-      _        <- finished.fold(Future.unit)(handoff(repository, _))
+      finished <-
+        if work.item.operationFinished then Future.successful(Some(work)) else executeWorkItem(repository, work)
+      _ <- finished.fold(Future.unit)(handoff(repository, _))
     } yield ()
 
     processing
@@ -124,11 +127,13 @@ class RegistrationWorker @Inject() (
     Future.firstCompletedOf(
       Seq(
         Future.unit.flatMap(_ => operation),
-        after(timeout, actorSystem.scheduler)(Future.failed(new TimeoutException("Registration operation timed out")))
+        after(operationTimeout, actorSystem.scheduler)(
+          Future.failed(new TimeoutException("Registration operation timed out"))
+        )
       )
     )
 
-  private def perform(repository: RegistrationWorkRepository, work: WorkItem[RegistrationCommand])(using
+  private def executeWorkItem(repository: RegistrationWorkRepository, work: WorkItem[RegistrationCommand])(using
       HeaderCarrier
   ): Future[Option[WorkItem[RegistrationCommand]]] = {
     val command = work.item
@@ -172,7 +177,7 @@ class RegistrationWorker @Inject() (
   // A parent only finishes after its successors are persisted. Read parents before successors,
   // awaiting each result, so a handoff cannot move active work behind the retention scan.
 
-  private def hasActiveGraph(orchestrationId: String): Future[Boolean] = {
+  private def isActiveOrchestration(orchestrationId: String): Future[Boolean] = {
     def loop(remaining: List[RegistrationStep]): Future[Boolean] = remaining match {
       case Nil          => Future.successful(false)
       case step :: rest =>
@@ -189,9 +194,9 @@ class RegistrationWorker @Inject() (
     candidates <- queues(Etmp).retentionCandidates()
     _          <- Future.traverse(candidates) { work =>
       val orchestrationId = work.item.data.orchestrationId
-      hasActiveGraph(orchestrationId).flatMap {
+      isActiveOrchestration(orchestrationId).flatMap {
         case true  => Future.unit
-        case false => expireGraph(orchestrationId)
+        case false => expireOrchestration(orchestrationId)
       }
     }
   } yield ()
@@ -212,9 +217,9 @@ class RegistrationWorker @Inject() (
       }
       .map(_ => ())
 
-  private def expireGraph(orchestrationId: String): Future[Unit] = {
+  private def expireOrchestration(orchestrationId: String): Future[Unit] = {
     val root    = queues(Etmp)
-    val expires = clock.instant().plusSeconds(config.get[Long]("work-items.retention-seconds"))
+    val expires = clock.instant().plusSeconds(retentionSeconds)
     for {
       persistedExpiry <- states.expire(orchestrationId, expires)
       _ <- Future.traverse(queues.all.values.filterNot(_ == root).toSeq)(_.expire(orchestrationId, persistedExpiry))

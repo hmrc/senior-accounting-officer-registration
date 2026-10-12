@@ -45,14 +45,18 @@ object RegistrationFailures {
       case _         => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
     }
     OperationRejected(
-      RegistrationFailure(httpStatus, reason),
-      status == 408 || status == 429 || status >= 500 && status <= 599
+      failure = RegistrationFailure(httpStatus = httpStatus, reason = reason),
+      retriable = status == 408 || status == 429 || status >= 500 && status <= 599
     )
   }
 
   val malformed: OperationRejected =
-    OperationRejected(RegistrationFailure(502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT), false)
-  val unavailable: RegistrationFailure = RegistrationFailure(502, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
+    OperationRejected(
+      failure = RegistrationFailure(httpStatus = 502, reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
+      retriable = false
+    )
+  val unavailable: RegistrationFailure =
+    RegistrationFailure(httpStatus = 502, reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
 }
 
 @Singleton
@@ -65,6 +69,14 @@ class RegistrationOperations @Inject() (
     clock: Clock
 )(using ExecutionContext) {
 
+  private val expectedEtmpStatus          = 201
+  private val expectedDpsStatus           = 201
+  private val expectedTaxEnrolmentsStatus = 204
+  private val expectedEmailStatus         = 202
+
+  private def required[A](value: Option[A], field: String): A =
+    value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
+
   private def check(response: HttpResponse, expected: Int): Unit =
     if response.status != expected then throw RegistrationFailures.response(response.status)
 
@@ -73,44 +85,48 @@ class RegistrationOperations @Inject() (
     val operation = command.step match {
       case Etmp =>
         etmp.signUp(data.request).map { response =>
-          check(response, 201)
+          check(response, expectedEtmpStatus)
           val accepted =
             Try(Json.parse(response.body).as[EtmpSuccessResponse]).getOrElse(throw RegistrationFailures.malformed)
           command.copy(data = data.copy(etmpResponse = Some(accepted)))
         }
       case Dps =>
+        val etmpResponse = required(data.etmpResponse, "etmpResponse")
         dps
-          .replaceSaoSubscription(data.etmpResponse.get.success.dsaoIdNumber, data.request)
+          .replaceSaoSubscription(etmpResponse.success.dsaoIdNumber, data.request)
           .map { response =>
-            check(response, 201)
+            check(response, expectedDpsStatus)
             command
           }
       case TaxEnrolments =>
+        val etmpResponse = required(data.etmpResponse, "etmpResponse")
         taxEnrolments
-          .enrol(TaxEnrolmentRequest(data.request, data.etmpResponse.get))
+          .enrol(TaxEnrolmentRequest(data.request, etmpResponse))
           .map { response =>
-            check(response, 204)
+            check(response, expectedTaxEnrolmentsStatus)
             command.copy(data = data.copy(completedAt = Some(clock.instant())))
           }
       case Email =>
-        email.postEmail(command.email.get).map { response =>
-          check(response, 202)
+        email.postEmail(required(command.email, "email")).map { response =>
+          check(response, expectedEmailStatus)
           command
         }
       case Audit =>
+        val etmpResponse = required(data.etmpResponse, "etmpResponse")
+        val completedAt  = required(data.completedAt, "completedAt")
         audit
           .sendEvent(
             DataEvent(
               auditSource = "senior-accounting-officer-registration",
               auditType = "RegistrationCompleted",
               eventId = data.orchestrationId,
-              generatedAt = data.completedAt.get,
+              generatedAt = completedAt,
               detail = Map(
-                "dsaoIdNumber"    -> data.etmpResponse.get.success.dsaoIdNumber,
+                "dsaoIdNumber"    -> etmpResponse.success.dsaoIdNumber,
                 "orchestrationId" -> data.orchestrationId,
                 "internalId"      -> data.internalId,
                 "correlationId"   -> data.correlationId,
-                "completedAt"     -> data.completedAt.get.toString
+                "completedAt"     -> completedAt.toString
               )
             )
           )

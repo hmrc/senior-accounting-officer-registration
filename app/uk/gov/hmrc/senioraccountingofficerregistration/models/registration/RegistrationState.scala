@@ -26,7 +26,7 @@ final case class RegistrationState(
     scopeKey: String,
     subscriptionId: Option[String] = None,
     failure: Option[RegistrationFailure] = None,
-    terminalAt: Option[Instant] = None,
+    outcomeRecordedAt: Option[Instant] = None,
     expiresAt: Option[Instant] = None
 )
 object RegistrationState {

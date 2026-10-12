@@ -40,6 +40,8 @@ class RegistrationStateRepository @Inject() (mongo: MongoComponent, clock: Clock
       )
     ) {
 
+  private val missingTerminalStateMessage = "Missing terminal registration state"
+
   def initialize(data: RegistrationData): Future[Unit] = collection
     .updateOne(
       Filters.equal("_id", data.orchestrationId),
@@ -64,7 +66,7 @@ class RegistrationStateRepository @Inject() (mongo: MongoComponent, clock: Clock
     else
       collection
         .updateOne(
-          Filters.and(Filters.equal("_id", command.data.orchestrationId), Filters.exists("terminalAt", false)),
+          Filters.and(Filters.equal("_id", command.data.orchestrationId), Filters.exists("outcomeRecordedAt", false)),
           Updates.combine(updates*)
         )
         .toFuture()
@@ -79,11 +81,22 @@ class RegistrationStateRepository @Inject() (mongo: MongoComponent, clock: Clock
     else
       command.failure match {
         case Some(failure) =>
-          Seq(Updates.set("failure", Codecs.toBson(failure)), Updates.set("terminalAt", clock.instant()))
+          Seq(Updates.set("failure", Codecs.toBson(failure)), Updates.set("outcomeRecordedAt", clock.instant()))
         case None if command.step == RegistrationStep.TaxEnrolments =>
           Seq(
-            Updates.set("subscriptionId", command.data.etmpResponse.get.success.dsaoIdNumber),
-            Updates.set("terminalAt", command.data.completedAt.get)
+            Updates.set(
+              "subscriptionId",
+              command.data.etmpResponse
+                .getOrElse(throw new IllegalStateException("Missing ETMP response"))
+                .success
+                .dsaoIdNumber
+            ),
+            Updates.set(
+              "outcomeRecordedAt",
+              command.data.completedAt.getOrElse(
+                throw new IllegalStateException("Missing completed registration timestamp")
+              )
+            )
           )
         case None => Seq.empty
       }
@@ -109,10 +122,10 @@ class RegistrationStateRepository @Inject() (mongo: MongoComponent, clock: Clock
           .headOption()
           .map {
             case Some(state) => expiryOf(state)
-            case None        => throw new IllegalStateException("Missing terminal registration state")
+            case None        => throw new IllegalStateException(missingTerminalStateMessage)
           }
     }
 
   private def expiryOf(state: RegistrationState): Instant =
-    state.expiresAt.getOrElse(throw new IllegalStateException("Missing terminal registration state"))
+    state.expiresAt.getOrElse(throw new IllegalStateException(missingTerminalStateMessage))
 }

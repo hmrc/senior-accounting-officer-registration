@@ -50,6 +50,8 @@ class RegistrationWorkRepository(
       )
     ) {
 
+  private val duplicateKeyErrorCode = 11000
+
   override def now(): Instant                 = clock.instant().truncatedTo(MILLIS)
   override val inProgressRetryAfter: Duration = Duration.ofSeconds(configuration.get[Long]("work-items.lease-seconds"))
 
@@ -60,7 +62,7 @@ class RegistrationWorkRepository(
     for {
       _         <- collection.deleteOne(Filters.and(key, Filters.lte("item.expiresAt", now()))).toFuture()
       persisted <- pushNew(command).map(_.item).recoverWith {
-        case error: MongoWriteException if error.getError.getCode == 11000 =>
+        case error: MongoWriteException if error.getError.getCode == duplicateKeyErrorCode =>
           collection.find(key).head().map(_.item)
       }
     } yield persisted
@@ -97,7 +99,10 @@ class RegistrationWorkRepository(
   private def ownedBy(work: WorkItem[RegistrationCommand]): Bson = Filters.and(
     Filters.equal("_id", work.id),
     Filters.equal("status", ProcessingStatus.InProgress),
-    Filters.equal("item.leaseToken", work.item.leaseToken.get)
+    Filters.equal(
+      "item.leaseToken",
+      work.item.leaseToken.getOrElse(throw new IllegalStateException("Work item has no lease token"))
+    )
   )
 
   private def updateOwned(work: WorkItem[RegistrationCommand], updates: Bson): Future[Unit] =

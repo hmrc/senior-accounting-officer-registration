@@ -54,7 +54,9 @@ object RegistrationData {
     RegistrationData(
       UUID.randomUUID().toString,
       internalId,
-      request.idempotencyKey.get,
+      request.idempotencyKey.getOrElse(
+        throw new IllegalArgumentException("Registration request must contain an idempotency key")
+      ),
       correlationId,
       request.copy(idempotencyKey = None),
       now

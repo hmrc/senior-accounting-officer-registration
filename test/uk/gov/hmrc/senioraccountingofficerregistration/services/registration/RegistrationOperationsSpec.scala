@@ -18,6 +18,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.services.registration
 
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.*
+import org.scalatest.OptionValues
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -36,7 +37,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import java.time.{Clock, Instant, ZoneOffset}
 
-class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with TestData {
+class RegistrationOperationsSpec
+    extends AnyWordSpec
+    with Matchers
+    with OptionValues
+    with ScalaFutures
+    with MockitoSugar
+    with TestData {
 
   given ExecutionContext = ExecutionContext.global
 
@@ -92,8 +99,8 @@ class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFut
       result.successors.count(_.step == Audit) shouldBe 1
       result.successors.count(_.step == Email) shouldBe 2
       result.successors.filter(_.step == Email).foreach { command =>
-        command.email.get.parameters("referenceId") shouldBe accepted.success.dsaoIdNumber
-        command.email.get.parameters("submittedDateTime") shouldBe "6 October 2026 at 01:00PM"
+        command.email.value.parameters("referenceId") shouldBe accepted.success.dsaoIdNumber
+        command.email.value.parameters("submittedDateTime") shouldBe "6 October 2026 at 01:00PM"
       }
       result.successors.map(_.commandKey) shouldBe result.successors.map(_.commandKey).distinct
     }
@@ -104,6 +111,24 @@ class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFut
       f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.malformed
     }
 
+    "fail clearly when a step is missing its required checkpoint data" in {
+      val f       = new Fixture
+      val command = f.root.copy(step = Dps)
+
+      intercept[IllegalStateException] {
+        f.operations.execute(command)
+      }.getMessage shouldBe "Missing required registration field: etmpResponse"
+    }
+
+    "fail clearly when an email command has no email payload" in {
+      val f       = new Fixture
+      val command = f.root.copy(step = Email)
+
+      intercept[IllegalStateException] {
+        f.operations.execute(command)
+      }.getMessage shouldBe "Missing required registration field: email"
+    }
+
     "retain the legacy response mapping and classify transient responses" in {
       Seq(408, 429, 500, 502, 503, 504, 599).foreach(status =>
         RegistrationFailures.response(status).retriable shouldBe true
@@ -112,13 +137,16 @@ class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFut
         RegistrationFailures.response(status).retriable shouldBe false
       )
       RegistrationFailures.response(400).failure shouldBe RegistrationFailure(
-        500,
-        Reason.DOWNSTREAM_SERVICE_MISALIGNMENT
+        httpStatus = 500,
+        reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT
       )
-      RegistrationFailures.response(401).failure shouldBe RegistrationFailure(500, Reason.SERVICE_MISCONFIGURATION)
+      RegistrationFailures.response(401).failure shouldBe RegistrationFailure(
+        httpStatus = 500,
+        reason = Reason.SERVICE_MISCONFIGURATION
+      )
       RegistrationFailures.response(503).failure shouldBe RegistrationFailure(
-        502,
-        Reason.DOWNSTREAM_SERVICE_UNAVAILABLE
+        httpStatus = 502,
+        reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE
       )
     }
 
@@ -134,7 +162,7 @@ class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFut
         .copy(data = f.taxCommand.data.copy(completedAt = Some(clock.instant())))
         .successors
         .find(_.step == Email)
-        .get
+        .value
       when(f.email.postEmail(any())(using any())).thenReturn(Future.successful(HttpResponse(503, "")))
       f.operations.execute(command).failed.futureValue shouldBe RegistrationFailures.response(503)
     }
@@ -145,7 +173,7 @@ class RegistrationOperationsSpec extends AnyWordSpec with Matchers with ScalaFut
         .copy(data = f.taxCommand.data.copy(completedAt = Some(clock.instant())))
         .successors
         .find(_.step == Audit)
-        .get
+        .value
       when(f.audit.sendEvent(any())(using any(), any()))
         .thenReturn(Future.successful(AuditResult.Failure("unavailable")))
       f.operations.execute(command).failed.futureValue shouldBe OperationRejected(

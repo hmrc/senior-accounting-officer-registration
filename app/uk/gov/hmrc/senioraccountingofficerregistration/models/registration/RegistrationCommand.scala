@@ -37,6 +37,9 @@ final case class RegistrationCommand(
     expiresAt: Option[Instant] = None
 ) {
 
+  private def required[A](value: Option[A], field: String): A =
+    value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
+
   private def next(step: RegistrationStep, email: Option[EmailRequest] = None): RegistrationCommand =
     RegistrationCommand(
       s"${data.orchestrationId}/$step/${email.map(e => RegistrationData.hash(Json.toJson(e).toString)).getOrElse("")}",
@@ -53,7 +56,8 @@ final case class RegistrationCommand(
         case Etmp          => Seq(next(Dps))
         case Dps           => Seq(next(TaxEnrolments))
         case TaxEnrolments =>
-          val submitted = DateTimeFormatter
+          val etmpResponse = required(data.etmpResponse, "etmpResponse")
+          val submitted    = DateTimeFormatter
             .ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH)
             .withZone(ZoneId.of("Europe/London"))
             .format(data.submittedAt)
@@ -68,7 +72,7 @@ final case class RegistrationCommand(
                     "recipientName"     -> contact.name.value,
                     "companyName"       -> data.request.nominatedCompany.name.value,
                     "submittedDateTime" -> submitted,
-                    "referenceId"       -> data.etmpResponse.get.success.dsaoIdNumber
+                    "referenceId"       -> etmpResponse.success.dsaoIdNumber
                   )
                 )
               )
