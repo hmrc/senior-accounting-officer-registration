@@ -34,6 +34,7 @@ final case class RegistrationData(
     request: SignUpRequest,
     submittedAt: Instant,
     authorization: Option[String] = None,
+    auditData: AuditInputData,
     etmpResponse: Option[EtmpSuccessResponse] = None,
     completedAt: Option[Instant] = None
 ) {
@@ -56,17 +57,19 @@ object RegistrationData {
       correlationId: String,
       request: SignUpRequest,
       now: Instant,
-      authorization: Option[String] = None
+      authorization: Option[String] = None,
+      auditData: AuditInputData
   ): RegistrationData =
     RegistrationData(
-      UUID.randomUUID().toString,
-      internalId,
-      request.idempotencyKey.getOrElse(
+      orchestrationId = UUID.randomUUID().toString,
+      internalId = internalId,
+      idempotencyKey = request.idempotencyKey.getOrElse(
         throw new IllegalArgumentException("Registration request must contain an idempotency key")
       ),
-      correlationId,
-      request.copy(idempotencyKey = None),
-      now,
-      authorization
+      correlationId = correlationId,
+      request = request.copy(idempotencyKey = None),
+      submittedAt = now,
+      authorization = authorization,
+      auditData = auditData
     )
 }
