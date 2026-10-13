@@ -16,13 +16,12 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration
 
-import org.apache.pekko.util.ByteString
 import play.api.http.HeaderNames
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
-import play.api.libs.ws.{BodyWritable, InMemoryBody, WSClient}
+import play.api.libs.ws.WSClient
 import support.MockAuthHelper.testBearerToken
+import support.SignUpFixtures.*
 import support.{ISpecBase, MockAuthHelper, MockDpsHelper, MockEtmpHelper, MockTaxEnrolmentHelper}
-import uk.gov.hmrc.senioraccountingofficerregistration.SignupIntegrationSpec.*
 
 import java.util.UUID
 
@@ -63,12 +62,12 @@ class SignupIntegrationSpec extends ISpecBase {
     "respond with 500 status" when {
 
       for (etmpStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401                        -> (500, "SERVICE_MISCONFIGURATION"),
-          403                        -> (500, "SERVICE_MISCONFIGURATION"),
-          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401 -> (500, "SERVICE_MISCONFIGURATION"),
+          403 -> (500, "SERVICE_MISCONFIGURATION"),
+          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"ETMP returns a $etmpStatus with reason=$serviceResponseReason" in {
@@ -97,12 +96,12 @@ class SignupIntegrationSpec extends ISpecBase {
       }
 
       for (dpsStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401                        -> (500, "SERVICE_MISCONFIGURATION"),
-          403                        -> (500, "SERVICE_MISCONFIGURATION"),
-          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401 -> (500, "SERVICE_MISCONFIGURATION"),
+          403 -> (500, "SERVICE_MISCONFIGURATION"),
+          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"DPS returns a $dpsStatus" in {
@@ -130,12 +129,12 @@ class SignupIntegrationSpec extends ISpecBase {
       }
 
       for (taxEnrolmentStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400                        -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401                        -> (500, "SERVICE_MISCONFIGURATION"),
-          403                        -> (500, "SERVICE_MISCONFIGURATION"),
-          500                        -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503                        -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418                        -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          401 -> (500, "SERVICE_MISCONFIGURATION"),
+          403 -> (500, "SERVICE_MISCONFIGURATION"),
+          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
+          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"Tax enrolment returns a $taxEnrolmentStatus" in {
@@ -162,50 +161,5 @@ class SignupIntegrationSpec extends ISpecBase {
       }
     }
   }
-
-}
-
-object SignupIntegrationSpec {
-  implicit val stringAsJsonWriter: BodyWritable[String] =
-    BodyWritable(str => InMemoryBody(ByteString.fromString(str)), "application/json")
-
-  val validRequestBodyAsString: String =
-    """{
-      |  "etmpSafeId": "1234567890",
-      |  "nominatedCompany": {
-      |    "name": "Test Company Ltd PLC",
-      |    "utr": "2233445567",
-      |    "crn": "11223344"
-      |  },
-      |  "contacts": [
-      |    {
-      |      "name": "Jane Doe",
-      |      "email": "jane.doe@example.com",
-      |      "status": "valid",
-      |      "language": "en-GB"
-      |    }
-      |  ]
-      |}
-      |""".stripMargin
-
-  val validRequestBodyAsStringWithIdempotency: String =
-    """{
-      |  "etmpSafeId": "1234567890",
-      |  "nominatedCompany": {
-      |    "name": "Test Company Ltd PLC",
-      |    "utr": "2233445567",
-      |    "crn": "11223344"
-      |  },
-      |  "contacts": [
-      |    {
-      |      "name": "Jane Doe",
-      |      "email": "jane.doe@example.com",
-      |      "status": "valid",
-      |      "language": "en-GB"
-      |    }
-      |  ],
-      |  "idempotencyKey": "testKey"
-      |}
-      |""".stripMargin
 
 }

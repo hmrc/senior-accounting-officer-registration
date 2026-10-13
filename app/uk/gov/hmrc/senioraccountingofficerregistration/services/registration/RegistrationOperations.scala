@@ -82,58 +82,60 @@ class RegistrationOperations @Inject() (
 
   def execute(command: RegistrationCommand)(using HeaderCarrier): Future[RegistrationCommand] = {
     val data      = command.data
-    val operation = command.step match {
-      case Etmp =>
-        etmp.signUp(data.request).map { response =>
-          check(response, expectedEtmpStatus)
-          val accepted =
-            Try(Json.parse(response.body).as[EtmpSuccessResponse]).getOrElse(throw RegistrationFailures.malformed)
-          command.copy(data = data.copy(etmpResponse = Some(accepted)))
-        }
-      case Dps =>
-        val etmpResponse = required(data.etmpResponse, "etmpResponse")
-        dps
-          .replaceSaoSubscription(etmpResponse.success.dsaoIdNumber, data.request)
-          .map { response =>
-            check(response, expectedDpsStatus)
+    val operation = Future.unit.flatMap { _ =>
+      command.step match {
+        case Etmp =>
+          etmp.signUp(data.request).map { response =>
+            check(response, expectedEtmpStatus)
+            val accepted =
+              Try(Json.parse(response.body).as[EtmpSuccessResponse]).getOrElse(throw RegistrationFailures.malformed)
+            command.copy(data = data.copy(etmpResponse = Some(accepted)))
+          }
+        case Dps =>
+          val etmpResponse = required(data.etmpResponse, "etmpResponse")
+          dps
+            .replaceSaoSubscription(etmpResponse.success.dsaoIdNumber, data.request)
+            .map { response =>
+              check(response, expectedDpsStatus)
+              command
+            }
+        case TaxEnrolments =>
+          val etmpResponse = required(data.etmpResponse, "etmpResponse")
+          taxEnrolments
+            .enrol(TaxEnrolmentRequest(data.request, etmpResponse))
+            .map { response =>
+              check(response, expectedTaxEnrolmentsStatus)
+              command.copy(data = data.copy(completedAt = Some(clock.instant())))
+            }
+        case Email =>
+          email.postEmail(required(command.email, "email")).map { response =>
+            check(response, expectedEmailStatus)
             command
           }
-      case TaxEnrolments =>
-        val etmpResponse = required(data.etmpResponse, "etmpResponse")
-        taxEnrolments
-          .enrol(TaxEnrolmentRequest(data.request, etmpResponse))
-          .map { response =>
-            check(response, expectedTaxEnrolmentsStatus)
-            command.copy(data = data.copy(completedAt = Some(clock.instant())))
-          }
-      case Email =>
-        email.postEmail(required(command.email, "email")).map { response =>
-          check(response, expectedEmailStatus)
-          command
-        }
-      case Audit =>
-        val etmpResponse = required(data.etmpResponse, "etmpResponse")
-        val completedAt  = required(data.completedAt, "completedAt")
-        audit
-          .sendEvent(
-            DataEvent(
-              auditSource = "senior-accounting-officer-registration",
-              auditType = "RegistrationCompleted",
-              eventId = data.orchestrationId,
-              generatedAt = completedAt,
-              detail = Map(
-                "dsaoIdNumber"    -> etmpResponse.success.dsaoIdNumber,
-                "orchestrationId" -> data.orchestrationId,
-                "internalId"      -> data.internalId,
-                "correlationId"   -> data.correlationId,
-                "completedAt"     -> completedAt.toString
+        case Audit =>
+          val etmpResponse = required(data.etmpResponse, "etmpResponse")
+          val completedAt  = required(data.completedAt, "completedAt")
+          audit
+            .sendEvent(
+              DataEvent(
+                auditSource = "senior-accounting-officer-registration",
+                auditType = "RegistrationCompleted",
+                eventId = data.orchestrationId,
+                generatedAt = completedAt,
+                detail = Map(
+                  "dsaoIdNumber"    -> etmpResponse.success.dsaoIdNumber,
+                  "orchestrationId" -> data.orchestrationId,
+                  "internalId"      -> data.internalId,
+                  "correlationId"   -> data.correlationId,
+                  "completedAt"     -> completedAt.toString
+                )
               )
             )
-          )
-          .map {
-            case AuditResult.Success | AuditResult.Disabled => command
-            case _: AuditResult.Failure => throw OperationRejected(RegistrationFailures.unavailable, true)
-          }
+            .map {
+              case AuditResult.Success | AuditResult.Disabled => command
+              case _: AuditResult.Failure => throw OperationRejected(RegistrationFailures.unavailable, true)
+            }
+      }
     }
     operation.map(_.copy(operationFinished = true)).recoverWith { case error: UpstreamErrorResponse =>
       Future.failed(RegistrationFailures.response(error.statusCode))

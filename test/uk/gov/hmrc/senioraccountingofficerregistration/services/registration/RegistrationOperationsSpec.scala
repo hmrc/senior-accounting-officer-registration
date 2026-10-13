@@ -115,18 +115,18 @@ class RegistrationOperationsSpec
       val f       = new Fixture
       val command = f.root.copy(step = Dps)
 
-      intercept[IllegalStateException] {
-        f.operations.execute(command)
-      }.getMessage shouldBe "Missing required registration field: etmpResponse"
+      val failure = f.operations.execute(command).failed.futureValue
+      failure shouldBe a[IllegalStateException]
+      failure.getMessage shouldBe "Missing required registration field: etmpResponse"
     }
 
     "fail clearly when an email command has no email payload" in {
       val f       = new Fixture
       val command = f.root.copy(step = Email)
 
-      intercept[IllegalStateException] {
-        f.operations.execute(command)
-      }.getMessage shouldBe "Missing required registration field: email"
+      val failure = f.operations.execute(command).failed.futureValue
+      failure shouldBe a[IllegalStateException]
+      failure.getMessage shouldBe "Missing required registration field: email"
     }
 
     "retain the legacy response mapping and classify transient responses" in {

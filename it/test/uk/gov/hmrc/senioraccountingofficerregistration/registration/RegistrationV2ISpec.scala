@@ -27,9 +27,9 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import play.api.libs.ws.WSRequest
 import support.{ISpecBase, MockDpsHelper, MockEtmpHelper, MockTaxEnrolmentHelper}
+import support.SignUpFixtures.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
-import uk.gov.hmrc.senioraccountingofficerregistration.SignupIntegrationSpec.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.RegistrationStep
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.RegistrationStep.*
 import uk.gov.hmrc.senioraccountingofficerregistration.repositories.registration.*
