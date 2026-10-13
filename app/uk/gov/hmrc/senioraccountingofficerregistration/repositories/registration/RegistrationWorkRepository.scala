@@ -151,6 +151,14 @@ class RegistrationWorkRepository(
     .headOption()
     .map(_.isDefined)
 
+  def clearAuthorization(orchestrationId: String): Future[Unit] = collection
+    .updateMany(
+      Filters.equal("item.data.orchestrationId", orchestrationId),
+      Updates.unset("item.data.authorization")
+    )
+    .toFuture()
+    .map(_ => ())
+
   def expire(orchestrationId: String, at: Instant): Future[Unit] = collection
     .updateMany(
       Filters.and(Filters.equal("item.data.orchestrationId", orchestrationId), Filters.exists("item.expiresAt", false)),

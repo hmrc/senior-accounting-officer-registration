@@ -105,7 +105,7 @@ class RegistrationOperations @Inject() (
             .enrol(TaxEnrolmentRequest(data.request, etmpResponse))
             .map { response =>
               check(response, expectedTaxEnrolmentsStatus)
-              command.copy(data = data.copy(completedAt = Some(clock.instant())))
+              command.copy(data = data.copy(authorization = None, completedAt = Some(clock.instant())))
             }
         case Email =>
           email.postEmail(required(command.email, "email")).map { response =>

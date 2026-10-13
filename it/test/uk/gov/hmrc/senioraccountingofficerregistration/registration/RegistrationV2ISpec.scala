@@ -19,7 +19,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.registration
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{reset, when}
-import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.bind
@@ -122,6 +122,11 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
       completed.json mustBe Json.obj("subscriptionId" -> subscriptionId)
       endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
       run(Email); run(Audit)
+      queues(Etmp).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
+      queues(Dps).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
+      queues(TaxEnrolments).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
+      queues(Email).collection.find().toFuture().futureValue.foreach(_.item.data.authorization mustBe None)
+      queues(Audit).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
       MockEtmpHelper.verifyEtmpWasCalled(correlationId)
       MockDpsHelper.verifyDpsWasCalled(subscriptionId, correlationId)
       MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(correlationId)
@@ -134,7 +139,7 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
       verify(
         1,
         putRequestedFor(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"))
-          .withHeader("Authorization", absent())
+          .withHeader("Authorization", equalTo("Bearer caller-token"))
       )
       org.mockito.Mockito.verify(audit).sendEvent(any())(using any(), any())
     }
@@ -164,6 +169,9 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
       val failed = endpoint("/testKey").get().futureValue
       failed.status mustBe 500
       failed.json mustBe Json.obj("reason" -> "SERVICE_MISCONFIGURATION")
+      queues(Etmp).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
+      queues(Dps).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
+      queues(TaxEnrolments).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
       verify(0, postRequestedFor(urlEqualTo("/hmrc/email")))
     }
 

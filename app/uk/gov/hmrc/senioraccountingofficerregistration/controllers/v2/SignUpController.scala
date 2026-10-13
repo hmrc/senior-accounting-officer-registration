@@ -38,7 +38,13 @@ class SignUpController @Inject() (
   def signUp: Action[String] = (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
     val identity = request.attrs(RegistrationIdentity.key)
     ValidateRequest.as[SignUpRequest] { data =>
-      service.submit(identity.internalId, identity.enrolled, request.correlationId, data)
+      service.submit(
+        identity.internalId,
+        identity.enrolled,
+        request.correlationId,
+        data,
+        request.headers.get("Authorization")
+      )
     }
   }
 

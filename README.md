@@ -50,6 +50,8 @@ Poll `GET /v2/sign-up/:idempotencyKey` using the same authenticated user:
 
 Five separate hmrc-mongo work-item collections process ETMP → DPS → tax enrolments, followed by independent email and audit commands. Each command carries its complete state and creates its successors. Email is queued per recipient; audit emits `RegistrationCompleted` through the HMRC audit connector with a stable event ID and completion timestamp. Neither confirmation affects registration success. When auditing is disabled by configuration, the audit command completes without delivery.
 
+Tax enrolments requires the caller's bearer token. The v2 work item stores the Authorization header in MongoDB and clears it from all work items when tax enrolment succeeds or fails permanently. Email and audit commands do not carry it. The token must remain valid through any retries. Access to the work-item collections must be restricted accordingly.
+
 Successful operations are checkpointed before status publication and handoff. Unique command keys make handoffs replayable, lease ownership and heartbeats protect work across instances and restarts. Delivery is at least once: a downstream success followed by a crash before its checkpoint can repeat the call. An ETMP `AlreadySubscribed` response remains a permanent error because it does not provide the required ID.
 
 | `work-items` setting | Default |

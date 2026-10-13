@@ -34,7 +34,13 @@ class RegistrationService @Inject() (queues: RegistrationQueues, states: Registr
 
   private val maxIdempotencyKeyLength = 256
 
-  def submit(internalId: String, enrolled: Boolean, correlationId: String, request: SignUpRequest): Future[Result] = {
+  def submit(
+      internalId: String,
+      enrolled: Boolean,
+      correlationId: String,
+      request: SignUpRequest,
+      authorization: Option[String] = None
+  ): Future[Result] = {
     val validation = request.idempotencyKey match {
       case None                                              => Some(Reason.MISSING_REQUIRED_FIELD)
       case Some(key) if key.trim.isEmpty                     => Some(Reason.CANNOT_BE_EMPTY)
@@ -45,7 +51,7 @@ class RegistrationService @Inject() (queues: RegistrationQueues, states: Registr
       case Some(reason) =>
         Future.successful(Results.BadRequest(Json.toJson(Seq(ApiError(reason, Some("/idempotencyKey"))))))
       case None =>
-        val data = RegistrationData.create(internalId, correlationId, request, clock.instant())
+        val data = RegistrationData.create(internalId, correlationId, request, clock.instant(), authorization)
         val root = queues(RegistrationStep.Etmp)
         root.findRoot(data.scopeKey).flatMap {
           case Some(existing)   => accepted(existing.item, data)

@@ -20,7 +20,7 @@ import com.codahale.metrics.{Gauge, MetricRegistry}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.pattern.after
 import play.api.{Configuration, Logging}
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{Authorization, HeaderCarrier}
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.RegistrationStep.*
@@ -64,7 +64,10 @@ class RegistrationWorker @Inject() (
   }
 
   private def process(repository: RegistrationWorkRepository, work: WorkItem[RegistrationCommand]): Future[Unit] = {
-    given HeaderCarrier   = HeaderCarrier(extraHeaders = Seq("correlationId" -> work.item.data.correlationId))
+    given HeaderCarrier = HeaderCarrier(
+      authorization = work.item.data.authorization.map(Authorization.apply),
+      extraHeaders = Seq("correlationId" -> work.item.data.correlationId)
+    )
     val heartbeatInterval = (leaseDuration / heartbeatDivisor).seconds
     val heartbeat         = actorSystem.scheduler.scheduleWithFixedDelay(heartbeatInterval, heartbeatInterval) { () =>
       repository.heartbeat(work).recover { case NonFatal(_) => () }
@@ -86,6 +89,14 @@ class RegistrationWorker @Inject() (
     for {
       _ <- repository.heartbeat(finished)
       _ <- publish(finished.item)
+      _ <-
+        if finished.item.step == TaxEnrolments then
+          Future
+            .traverse(Seq(Etmp, Dps, TaxEnrolments)) { step =>
+              queues(step).clearAuthorization(finished.item.data.orchestrationId)
+            }
+            .map(_ => ())
+        else Future.unit
       _ <- Future.traverse(finished.item.successors) { next =>
         for {
           _ <- repository.heartbeat(finished)

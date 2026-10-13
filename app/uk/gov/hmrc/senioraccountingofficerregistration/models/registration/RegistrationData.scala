@@ -33,6 +33,7 @@ final case class RegistrationData(
     correlationId: String,
     request: SignUpRequest,
     submittedAt: Instant,
+    authorization: Option[String] = None,
     etmpResponse: Option[EtmpSuccessResponse] = None,
     completedAt: Option[Instant] = None
 ) {
@@ -50,7 +51,13 @@ object RegistrationData {
 
   def scopeKey(internalId: String, key: String): String = hash(Json.arr(internalId, key).toString)
 
-  def create(internalId: String, correlationId: String, request: SignUpRequest, now: Instant): RegistrationData =
+  def create(
+      internalId: String,
+      correlationId: String,
+      request: SignUpRequest,
+      now: Instant,
+      authorization: Option[String] = None
+  ): RegistrationData =
     RegistrationData(
       UUID.randomUUID().toString,
       internalId,
@@ -59,6 +66,7 @@ object RegistrationData {
       ),
       correlationId,
       request.copy(idempotencyKey = None),
-      now
+      now,
+      authorization
     )
 }
