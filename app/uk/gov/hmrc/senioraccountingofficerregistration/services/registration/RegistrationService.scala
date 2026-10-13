@@ -39,7 +39,8 @@ class RegistrationService @Inject() (queues: RegistrationQueues, states: Registr
       enrolled: Boolean,
       correlationId: String,
       request: SignUpRequest,
-      authorization: Option[String] = None
+      authorization: Option[String] = None,
+      auditData: AuditInputData
   ): Future[Result] = {
     val validation = request.idempotencyKey match {
       case None                                              => Some(Reason.MISSING_REQUIRED_FIELD)
@@ -51,7 +52,8 @@ class RegistrationService @Inject() (queues: RegistrationQueues, states: Registr
       case Some(reason) =>
         Future.successful(Results.BadRequest(Json.toJson(Seq(ApiError(reason, Some("/idempotencyKey"))))))
       case None =>
-        val data = RegistrationData.create(internalId, correlationId, request, clock.instant(), authorization)
+        val data =
+          RegistrationData.create(internalId, correlationId, request, clock.instant(), authorization, auditData)
         val root = queues(RegistrationStep.Etmp)
         root.findRoot(data.scopeKey).flatMap {
           case Some(existing)   => accepted(existing.item, data)
