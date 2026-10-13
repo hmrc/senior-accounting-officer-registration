@@ -33,7 +33,7 @@ sbt lint
 
 All routes below use the `/senior-accounting-officer-registration` prefix and require authentication and a UUID `correlationId` header.
 
-`POST /sign-up` retains its synchronous behavior. Its controller and service live in `v1` packages; the connectors and shared request models are unchanged.
+`POST /sign-up` retains its synchronous behaviour. Its controller and service live in `v1` packages; the connectors and shared request models are unchanged.
 
 `POST /v2/sign-up` accepts the existing signup JSON with a required `idempotencyKey` (nonblank, at most 256 characters). It returns `202 {"idempotencyKey":"..."}` after the initial work item and status are persisted. Keys are scoped to the authenticated internal user ID. Repeating the same request returns the same key; changing its payload returns 409 with `IDEMPOTENCY_KEY_CONFLICT`. An enrolled owner can replay an existing request, but cannot start a new registration.
 
@@ -50,9 +50,7 @@ Poll `GET /v2/sign-up/:idempotencyKey` using the same authenticated user:
 
 Five separate hmrc-mongo work-item collections process ETMP → DPS → tax enrolments, followed by independent email and audit commands. Each command carries its complete state and creates its successors. Email is queued per recipient; audit emits `RegistrationCompleted` through the HMRC audit connector with a stable event ID and completion timestamp. Neither confirmation affects registration success. When auditing is disabled by configuration, the audit command completes without delivery.
 
-Successful operations are checkpointed before status publication and handoff. Unique command keys make handoffs replayable; lease ownership and heartbeats protect work across instances and restarts. Delivery is at least once: a downstream success followed by a crash before its checkpoint can repeat the call. An ETMP `AlreadySubscribed` response remains a permanent error because it does not provide the required ID.
-
-Workers rebuild a correlation-only `HeaderCarrier`, following `senior-accounting-officer`. This relies on the confirmed token-free background access contract for tax enrolments; caller bearer tokens are not persisted.
+Successful operations are checkpointed before status publication and handoff. Unique command keys make handoffs replayable, lease ownership and heartbeats protect work across instances and restarts. Delivery is at least once: a downstream success followed by a crash before its checkpoint can repeat the call. An ETMP `AlreadySubscribed` response remains a permanent error because it does not provide the required ID.
 
 | `work-items` setting | Default |
 | --- | --- |
