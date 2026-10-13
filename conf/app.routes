@@ -1,10 +1,4 @@
-# microservice specific routes
+POST /sign-up uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1.SignUpController.signUp
 
-###
-#  summary: Sign up with ETMP
-###
-POST       /sign-up                         uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUp
-
-# New fault tolerant endpoints
-POST       /v2/sign-up                      uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.signUpWithFaultTolerance
-GET        /v2/sign-up/:idempotencyKey      uk.gov.hmrc.senioraccountingofficerregistration.controllers.SignUpController.getStateOfWorkItem(idempotencyKey: String)
+POST /v2/sign-up uk.gov.hmrc.senioraccountingofficerregistration.controllers.v2.SignUpController.signUp
+GET /v2/sign-up/:idempotencyKey uk.gov.hmrc.senioraccountingofficerregistration.controllers.v2.SignUpController.status(idempotencyKey: String)

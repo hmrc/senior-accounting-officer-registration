@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.controllers
+package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
+import uk.gov.hmrc.senioraccountingofficerregistration.controllers.{BaseController, ValidateRequest}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{Outcome, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{Outcome, SignUpResult}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import javax.inject.{Inject, Singleton}
 
@@ -66,17 +67,4 @@ class SignUpController @Inject() (
     }
   }
 
-  def signUpWithFaultTolerance: Action[String] =
-    (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
-      ValidateRequest.as[SignUpRequest] { req =>
-        Future.successful(
-          Accepted(Json.toJson(SignUpIdempotencyResponse(req.idempotencyKey)))
-        )
-      }
-    }
-
-  def getStateOfWorkItem(idempotencyKey: String): Action[String] =
-    (identify andThen ensureCorrelation).async(parse.tolerantText) { implicit request =>
-      Future.successful(NoContent)
-    }
 }

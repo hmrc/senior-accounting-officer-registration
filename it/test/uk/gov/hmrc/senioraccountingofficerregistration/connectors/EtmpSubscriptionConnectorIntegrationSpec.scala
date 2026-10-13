@@ -24,6 +24,9 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
+import play.api.inject.bind
+import org.mockito.Mockito.mock
+import uk.gov.hmrc.senioraccountingofficerregistration.services.registration.{RegistrationService, RegistrationWorker}
 import play.api.Application
 import play.api.http.{HeaderNames, MimeTypes, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -50,12 +53,17 @@ class EtmpSubscriptionConnectorIntegrationSpec
     wireMockServer.start()
 
     GuiceApplicationBuilder()
+      .configure("work-items.enabled" -> false)
       .configure(
         "microservice.services.hip.protocol" -> "http",
         "microservice.services.hip.host"     -> "localhost",
         "microservice.services.hip.port"     -> wireMockServer.port(),
-        "hip.clientId" -> "some-client-id",
-        "hip.clientSecret"   -> "some-client-secret"
+        "hip.clientId"                       -> "some-client-id",
+        "hip.clientSecret"                   -> "some-client-secret"
+      )
+      .overrides(
+        bind[RegistrationService].toInstance(mock(classOf[RegistrationService])),
+        bind[RegistrationWorker].toInstance(mock(classOf[RegistrationWorker]))
       )
       .disable[PlayMongoModule]
       .build()

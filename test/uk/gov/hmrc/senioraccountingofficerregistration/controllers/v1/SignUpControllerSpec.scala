@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.controllers
+package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -39,8 +39,12 @@ import play.api.{Application, inject}
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{FakeIdentifierAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{
+  DownstreamService,
+  Outcome,
+  SignUpResult
+}
 
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
@@ -63,7 +67,6 @@ class SignUpControllerSpec
 
   private val mockSignUpService = mock[SignUpService]
 
-  /** (tax-enrolments status, the outcome, the response status, the response reason) */
   private val taxEnrolmentFailures: Seq[(Int, Outcome, Int, Reason)] = Seq(
     (Status.BAD_REQUEST, Outcome.BadRequest, Status.INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
     (Status.UNAUTHORIZED, Outcome.Unauthorised, Status.INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION),
@@ -75,6 +78,7 @@ class SignUpControllerSpec
   )
 
   override def fakeApplication(): Application = GuiceApplicationBuilder()
+    .configure("work-items.enabled" -> false)
     .overrides(
       bind[IdentifierAction].to[FakeIdentifierAction],
       bind[SignUpService].toInstance(mockSignUpService)
@@ -274,54 +278,4 @@ class SignUpControllerSpec
     }
   }
 
-  private def requestWithCorrelationId(method: String, url: String) =
-    FakeRequest(method, url)
-      .withHeaders(
-        HeaderNames.CONTENT_TYPE -> MimeTypes.JSON,
-        "CorrelationId"          -> UUID.randomUUID().toString
-      )
-
-  "POST /signUpWithFaultTolerance" should {
-    "return 202 Accepted and the idempotency key" when {
-      "a key is supplied" in {
-        val request =
-          requestWithCorrelationId(
-            "POST",
-            routes.SignUpController.signUpWithFaultTolerance.url
-          ).withJsonBody(
-            Json.toJson(signUpRequest.copy(idempotencyKey = Some("TestKey")))
-          )
-
-        val result = route(app, request).value
-
-        status(result) shouldBe Status.ACCEPTED
-        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(Some("TestKey"))
-      }
-
-      "no key is supplied" in {
-        val request =
-          requestWithCorrelationId(
-            "POST",
-            routes.SignUpController.signUpWithFaultTolerance.url
-          ).withJsonBody(Json.toJson(signUpRequest))
-
-        val result = route(app, request).value
-
-        status(result) shouldBe Status.ACCEPTED
-        contentAsJson(result).as[SignUpIdempotencyResponse] shouldBe SignUpIdempotencyResponse(None)
-      }
-    }
-  }
-
-  "GET /getStateOfWorkItem" should {
-    "return 204 No Content" in {
-      val request =
-        requestWithCorrelationId(
-          "GET",
-          routes.SignUpController.getStateOfWorkItem("TestKey").url
-        )
-
-      status(route(app, request).value) shouldBe Status.NO_CONTENT
-    }
-  }
 }

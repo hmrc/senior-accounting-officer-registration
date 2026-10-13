@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.senioraccountingofficerregistration.services
+package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
 import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
@@ -34,7 +34,12 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.*
-import uk.gov.hmrc.senioraccountingofficerregistration.services.SignUpService.{DownstreamService, Outcome, SignUpResult}
+import uk.gov.hmrc.senioraccountingofficerregistration.services.EmailService
+import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{
+  DownstreamService,
+  Outcome,
+  SignUpResult
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -68,6 +73,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   )
 
   private def connectors(): Fixture = {
+
     val etmpConnector          = mock[EtmpSubscriptionConnector]
     val taxEnrolmentsConnector = mock[TaxEnrolmentsConnector]
     val dpsConnector           = mock[DpsConnector]
