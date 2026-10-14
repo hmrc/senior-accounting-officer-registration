@@ -115,6 +115,27 @@ class RegistrationOperations @Inject() (
         case Audit =>
           val etmpResponse = required(data.etmpResponse, "etmpResponse")
           val completedAt  = required(data.completedAt, "completedAt")
+          val eventDetails = Map(
+            "etmpSubscriptionId" -> etmpResponse.success.dsaoIdNumber,
+            "etmpSafeId"         -> data.orchestrationId,
+
+            "nominatedCompanyUtr"  -> data.request.nominatedCompany.utr.value,
+            "nominatedCompanyCrn"  -> data.request.nominatedCompany.crn.value,
+            "nominatedCompanyName" -> data.request.nominatedCompany.name.value
+          ) ++
+            data.request.contacts.value
+              .take(2)
+              .zipWithIndex
+              .flatMap { case (contact, index) =>
+                val prefix = s"contact${index + 1}"
+                List(
+                  s"${prefix}Name"     -> contact.name.value,
+                  s"${prefix}Email"    -> contact.email.value,
+                  s"${prefix}Language" -> contact.language.toString
+                )
+              }
+              .toMap
+
           audit
             .sendEvent(
               DataEvent(
@@ -123,21 +144,7 @@ class RegistrationOperations @Inject() (
                 auditType = "SubscriptionSubmitted",
                 eventId = data.orchestrationId,
                 generatedAt = completedAt,
-                detail = Map(
-                  "etmpSubscriptionId" -> etmpResponse.success.dsaoIdNumber,
-                  "etmpSafeId"         -> data.orchestrationId,
-
-                  "nominatedCompanyUtr"  -> data.request.nominatedCompany.utr.value,
-                  "nominatedCompanyCrn"  -> data.request.nominatedCompany.crn.value,
-                  "nominatedCompanyName" -> data.request.nominatedCompany.name.value,
-
-                  "contact1Name"     -> "", // TODO populate from contacts list
-                  "contact1Email"    -> "",
-                  "contact1Language" -> "",
-                  "contact2Name"     -> "",
-                  "contact2Email"    -> "",
-                  "contact2Language" -> ""
-                ),
+                detail = eventDetails,
                 tags = Map(
                   "clientIP"     -> data.auditData.tags.clientIp,
                   "X-Request-ID" -> data.auditData.tags.xRequestId,
