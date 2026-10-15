@@ -24,7 +24,7 @@ final case class AuditInputData(
     auditSource: String,
     auditType: String,
     tags: AuditTags
-) {}
+)
 object AuditInputData {
 
   given OFormat[AuditInputData] = Json.format
@@ -47,7 +47,7 @@ final case class AuditTags(
     clientIp: String,
     clientPort: String,
     path: String
-) {}
+)
 object AuditTags {
 
   given OFormat[AuditTags] = Json.format
