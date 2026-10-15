@@ -148,7 +148,7 @@ class RegistrationOperations @Inject() (
                 tags = Map(
                   "clientIP"     -> data.auditData.tags.clientIp,
                   "X-Request-ID" -> data.auditData.tags.xRequestId,
-                  "deviceId"     -> data.auditData.tags.deviceId,
+                  "deviceID"     -> data.auditData.tags.deviceId,
                   "clientPort"   -> data.auditData.tags.clientPort,
                   "path"         -> data.auditData.tags.path,
                   "X-Session-ID" -> data.auditData.tags.xSessionId
