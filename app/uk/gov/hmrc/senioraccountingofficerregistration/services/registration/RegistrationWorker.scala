@@ -178,6 +178,10 @@ class RegistrationWorker @Inject() (
                 .retry(saved, retryDelays(attempted.item.attempts - 1), rejection.failure.reason.toString)
                 .map { _ =>
                   metrics.counter(s"registration.${command.step}.retry").inc()
+                  logger.warn(
+                    s"[Registration][${command.step}][Retry][OrchestrationId=${command.data.orchestrationId}][CorrelationId=${command.data.correlationId}]" +
+                      s"[Attempt=${attempted.item.attempts}][DelaySeconds=${retryDelays(attempted.item.attempts - 1)}][Reason=${rejection.failure.reason}]"
+                  )
                   None
                 }
             }
