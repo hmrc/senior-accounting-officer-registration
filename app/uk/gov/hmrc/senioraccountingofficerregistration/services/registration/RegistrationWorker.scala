@@ -111,9 +111,13 @@ class RegistrationWorker @Inject() (
   private def recordCompletion(command: RegistrationCommand): Unit = {
     val metric = if command.failure.isDefined then "permanent-failure" else "completed"
     metrics.counter(s"registration.${command.step}.$metric").inc()
-    logger.info(
+    val context =
       s"[Registration][${command.step}][$metric][OrchestrationId=${command.data.orchestrationId}][CorrelationId=${command.data.correlationId}]"
-    )
+    command.failure match {
+      case Some(failure) =>
+        logger.warn(s"$context[Reason=${failure.reason}][HttpStatus=${failure.httpStatus}]")
+      case None => logger.info(context)
+    }
   }
 
   private def retry(
