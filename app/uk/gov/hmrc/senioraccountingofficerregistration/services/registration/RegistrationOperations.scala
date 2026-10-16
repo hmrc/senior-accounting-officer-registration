@@ -115,19 +115,43 @@ class RegistrationOperations @Inject() (
         case Audit =>
           val etmpResponse = required(data.etmpResponse, "etmpResponse")
           val completedAt  = required(data.completedAt, "completedAt")
+          val eventDetails = Map(
+            "etmpSubscriptionId" -> etmpResponse.success.dsaoIdNumber,
+            "etmpSafeId"         -> data.orchestrationId,
+
+            "nominatedCompanyUtr"  -> data.request.nominatedCompany.utr.value,
+            "nominatedCompanyCrn"  -> data.request.nominatedCompany.crn.value,
+            "nominatedCompanyName" -> data.request.nominatedCompany.name.value
+          ) ++
+            data.request.contacts.value
+              .take(2)
+              .zipWithIndex
+              .flatMap { case (contact, index) =>
+                val prefix = s"contact${index + 1}"
+                List(
+                  s"${prefix}Name"     -> contact.name.value,
+                  s"${prefix}Email"    -> contact.email.value,
+                  s"${prefix}Language" -> contact.language.toString
+                )
+              }
+              .toMap
+
           audit
             .sendEvent(
               DataEvent(
-                auditSource = "senior-accounting-officer-registration",
-                auditType = "RegistrationCompleted",
+                auditProvider = Some("mdtp"),
+                auditSource = "senior-accounting-officer",
+                auditType = "SubscriptionSubmitted",
                 eventId = data.orchestrationId,
                 generatedAt = completedAt,
-                detail = Map(
-                  "dsaoIdNumber"    -> etmpResponse.success.dsaoIdNumber,
-                  "orchestrationId" -> data.orchestrationId,
-                  "internalId"      -> data.internalId,
-                  "correlationId"   -> data.correlationId,
-                  "completedAt"     -> completedAt.toString
+                detail = eventDetails,
+                tags = Map(
+                  "clientIP"     -> data.auditData.tags.clientIp,
+                  "X-Request-ID" -> data.auditData.tags.xRequestId,
+                  "deviceID"     -> data.auditData.tags.deviceId,
+                  "clientPort"   -> data.auditData.tags.clientPort,
+                  "path"         -> data.auditData.tags.path,
+                  "X-Session-ID" -> data.auditData.tags.xSessionId
                 )
               )
             )

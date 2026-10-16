@@ -19,6 +19,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v2
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.EnsureCorrelationIdAction
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.{BaseController, ValidateRequest}
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 import uk.gov.hmrc.senioraccountingofficerregistration.services.registration.RegistrationService
 
@@ -43,7 +44,10 @@ class SignUpController @Inject() (
         identity.enrolled,
         request.correlationId,
         data,
-        request.headers.get("Authorization")
+        request.headers.get("Authorization"),
+        AuditInputData.create(
+          path = "/senior-accounting-officer/sign-up"
+        )
       )
     }
   }
