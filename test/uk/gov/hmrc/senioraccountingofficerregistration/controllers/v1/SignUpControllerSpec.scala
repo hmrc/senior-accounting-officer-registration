@@ -241,10 +241,10 @@ class SignUpControllerSpec
       contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
     }
 
-    "translate AlreadySubscribed to 502 with a DOWNSTREAM_SERVICE_MISALIGNMENT error" in {
+    "translate AlreadySubscribed to 422 with a ALREADY_REGISTERED error" in {
       val result = resultFor(SignUpResult.Failed(DownstreamService.ETMP, Outcome.AlreadySubscribed, "status=422"))
-      status(result) shouldBe Status.BAD_GATEWAY
-      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT))
+      status(result) shouldBe Status.UNPROCESSABLE_ENTITY
+      contentAsJson(result) shouldBe Json.toJson(ApiError(Reason.ALREADY_REGISTERED))
     }
   }
 

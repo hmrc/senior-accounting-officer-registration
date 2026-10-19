@@ -37,6 +37,7 @@ enum Reason {
   case MALFORMED_REQUEST
   case MISSING_REQUIRED_FIELD
   case INVALID_DATA_TYPE
+  case ALREADY_REGISTERED
 }
 
 object Reason {

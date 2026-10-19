@@ -60,7 +60,9 @@ class SignUpController @Inject() (
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_ERROR)))
             case Outcome.Unavailable =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)))
-            case Outcome.Unprocessable | Outcome.MalformedResponse | Outcome.Misalignment | Outcome.AlreadySubscribed =>
+            case Outcome.AlreadySubscribed =>
+              UnprocessableEntity(Json.toJson(ApiError(Reason.ALREADY_REGISTERED)))
+            case Outcome.Unprocessable | Outcome.MalformedResponse | Outcome.Misalignment =>
               BadGateway(Json.toJson(ApiError(Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)))
           }
       }
