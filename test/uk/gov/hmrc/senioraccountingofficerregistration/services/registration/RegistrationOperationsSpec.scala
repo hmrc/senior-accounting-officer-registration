@@ -54,7 +54,8 @@ class RegistrationOperationsSpec
     "user",
     "correlation",
     generateSignUpRequest(1).copy(idempotencyKey = Some("key")),
-    clock.instant()
+    clock.instant(),
+    auditData = AuditInputData.create("auditPath")
   )
 
   private class Fixture {
@@ -184,7 +185,7 @@ class RegistrationOperationsSpec
       verify(f.audit).sendEvent(event.capture())(using any(), any())
       event.getValue.eventId shouldBe data.orchestrationId
       event.getValue.generatedAt shouldBe clock.instant()
-      event.getValue.auditType shouldBe "RegistrationCompleted"
+      event.getValue.auditType shouldBe "SubscriptionSubmitted"
     }
   }
 }

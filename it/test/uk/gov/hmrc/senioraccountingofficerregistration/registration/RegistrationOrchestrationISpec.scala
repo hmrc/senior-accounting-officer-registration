@@ -41,6 +41,7 @@ import java.time.{Clock, Instant, ZoneId, ZoneOffset}
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.HeaderCarrier
 
 class RegistrationOrchestrationISpec
     extends AnyWordSpec
@@ -56,6 +57,8 @@ class RegistrationOrchestrationISpec
   given ActorSystem = ActorSystem("registration-repository-test")
 
   given ExecutionContext = summon[ActorSystem].dispatcher
+
+  given HeaderCarrier = HeaderCarrier()
 
   private class TestClock extends Clock {
 
@@ -93,9 +96,10 @@ class RegistrationOrchestrationISpec
     clock
   )
 
-  private val service  = new RegistrationService(queues, states, clock)
-  private val request  = generateSignUpRequest(1).copy(idempotencyKey = Some("key"))
-  private val accepted = generateEtmpSuccessResponse(4)
+  private val service   = new RegistrationService(queues, states, clock)
+  private val request   = generateSignUpRequest(1).copy(idempotencyKey = Some("key"))
+  private val auditData = AuditInputData.create("auditPath")
+  private val accepted  = generateEtmpSuccessResponse(4)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -134,7 +138,7 @@ class RegistrationOrchestrationISpec
     queues(step).collection.find().toFuture().futureValue
 
   private def submit(): Unit =
-    status(service.submit("user", false, "correlation", request)) shouldBe ACCEPTED
+    status(service.submit("user", false, "correlation", request, None, auditData)) shouldBe ACCEPTED
 
   private def blockingSteps(): Unit = {
     submit()
@@ -156,7 +160,9 @@ class RegistrationOrchestrationISpec
 
     "deduplicate simultaneous requests and reject conflicting or invalid requests" in {
       val responses =
-        Future.sequence((1 to 8).map(_ => service.submit("user", false, "correlation", request))).futureValue
+        Future
+          .sequence((1 to 8).map(_ => service.submit("user", false, "correlation", request, None, auditData)))
+          .futureValue
       responses.map(_.header.status).distinct shouldBe Seq(ACCEPTED)
       entries(Etmp) should have size 1
       status(
@@ -164,25 +170,31 @@ class RegistrationOrchestrationISpec
           "user",
           false,
           "correlation",
-          request.copy(etmpSafeId = uk.gov.hmrc.senioraccountingofficerregistration.models.requests.EtmpSafeId("other"))
+          request.copy(etmpSafeId =
+            uk.gov.hmrc.senioraccountingofficerregistration.models.requests.EtmpSafeId("other")
+          ),
+          None,
+          auditData
         )
       ) shouldBe CONFLICT
-      status(service.submit("user", false, "correlation", request.copy(idempotencyKey = None))) shouldBe BAD_REQUEST
       status(
-        service.submit("user", false, "correlation", request.copy(idempotencyKey = Some(" ")))
+        service.submit("user", false, "correlation", request.copy(idempotencyKey = None), None, auditData)
       ) shouldBe BAD_REQUEST
       status(
-        service.submit("user", false, "correlation", request.copy(idempotencyKey = Some("a" * 257)))
+        service.submit("user", false, "correlation", request.copy(idempotencyKey = Some(" ")), None, auditData)
+      ) shouldBe BAD_REQUEST
+      status(
+        service.submit("user", false, "correlation", request.copy(idempotencyKey = Some("a" * 257)), None, auditData)
       ) shouldBe BAD_REQUEST
     }
 
     "allow an enrolled owner to replay and poll while isolating users" in {
       blockingSteps()
-      status(service.submit("user", true, "correlation", request)) shouldBe ACCEPTED
+      status(service.submit("user", true, "correlation", request, None, auditData)) shouldBe ACCEPTED
       status(service.status("user", "key")) shouldBe OK
       status(service.status("other", "key")) shouldBe NOT_FOUND
-      status(service.submit("other", true, "correlation", request)) shouldBe FORBIDDEN
-      status(service.submit("other", false, "correlation", request)) shouldBe ACCEPTED
+      status(service.submit("other", true, "correlation", request, None, auditData)) shouldBe FORBIDDEN
+      status(service.submit("other", false, "correlation", request, None, auditData)) shouldBe ACCEPTED
       entries(Etmp) should have size 2
     }
 
@@ -234,7 +246,7 @@ class RegistrationOrchestrationISpec
     }
 
     "recover a root accepted before state initialization" in {
-      val data = RegistrationData.create("user", "correlation", request, clock.instant())
+      val data = RegistrationData.create("user", "correlation", request, clock.instant(), None, auditData)
       queues(Etmp).enqueue(RegistrationCommand.start(data)).futureValue
       run(Etmp)
       status(service.status("user", "key")) shouldBe NO_CONTENT
