@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
+
 import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
@@ -48,6 +50,8 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
   private given ExecutionContext = ExecutionContext.global
   private given HeaderCarrier    = HeaderCarrier()
 
+  private val auditData = AuditInputData.create("/sign-up")
+
   private val signUpRequest       = generateSignUpRequest(seed = 1)
   private val etmpSuccessResponse = generateEtmpSuccessResponse(seed = 4)
   private val subscriptionId      = etmpSuccessResponse.success.dsaoIdNumber
@@ -69,6 +73,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       dpsConnector: DpsConnector,
       taxEnrolmentsConnector: TaxEnrolmentsConnector,
       emailService: EmailService,
+      auditService: SignUpAuditService,
       service: SignUpService
   )
 
@@ -78,7 +83,10 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
     val taxEnrolmentsConnector = mock[TaxEnrolmentsConnector]
     val dpsConnector           = mock[DpsConnector]
     val emailService           = mock[EmailService]
-    val service                = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector, emailService)
+    val auditService           = mock[SignUpAuditService]
+    when(auditService.auditSubscriptionSubmitted(anyArg(), anyArg(), anyArg())(using anyArg()))
+      .thenReturn(Future.successful(()))
+    val service = SignUpService(etmpConnector, taxEnrolmentsConnector, dpsConnector, emailService, auditService)
 
     when(
       emailService.sendEmail(
@@ -88,7 +96,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )(using anyArg[HeaderCarrier])
     ).thenReturn(Future.successful(()))
 
-    Fixture(etmpConnector, dpsConnector, taxEnrolmentsConnector, emailService, service)
+    Fixture(etmpConnector, dpsConnector, taxEnrolmentsConnector, emailService, auditService, service)
   }
 
   private def stubEtmp(etmpConnector: EtmpSubscriptionConnector, response: HttpResponse): Unit =
@@ -120,8 +128,9 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Success(subscriptionId)
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Success(subscriptionId)
 
+      verify(fixture.auditService).auditSubscriptionSubmitted(signUpRequest, etmpSuccessResponse, auditData)
       verify(fixture.etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest))(using anyArg[HeaderCarrier])
       verify(fixture.dpsConnector).replaceSaoSubscription(
         ArgumentMatchers.eq(subscriptionId),
@@ -143,17 +152,30 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )(using anyArg[HeaderCarrier])
     }
 
+    "return success and send email while audit delivery is pending" in {
+      val fixture = connectors()
+      stubEtmp(fixture.etmpConnector, etmpCreated)
+      stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
+      stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
+      val pending = scala.concurrent.Promise[Unit]()
+      when(fixture.auditService.auditSubscriptionSubmitted(anyArg(), anyArg(), anyArg())(using anyArg()))
+        .thenReturn(pending.future)
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Success(subscriptionId)
+      verify(fixture.emailService).sendEmail(anyArg(), anyArg(), anyArg())(using anyArg())
+      pending.success(())
+    }
+
     "return MalformedResponse(ETMP) and not call DPS when ETMP returns 201 with an unparsable body" in {
       val fixture = connectors()
       stubEtmp(fixture.etmpConnector, HttpResponse(Status.CREATED, "not json"))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe
         SignUpResult.Failed(DownstreamService.ETMP, Outcome.MalformedResponse, "status=201 unparsable response body")
 
       verify(fixture.dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
         anyArg[HeaderCarrier]
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return DownstreamError(ETMP) with the logged error detail and not call DPS when ETMP returns 500" in {
@@ -165,7 +187,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       )
       stubEtmp(fixture.etmpConnector, HttpResponse(Status.INTERNAL_SERVER_ERROR, body))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.DownstreamError,
         "status=500 origin=HoD code=500 logID=89505FF7"
@@ -174,25 +196,25 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verify(fixture.dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
         anyArg[HeaderCarrier]
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return Unauthorised(ETMP) when ETMP returns 401" in {
       val fixture = connectors()
       stubEtmp(fixture.etmpConnector, HttpResponse(Status.UNAUTHORIZED, ""))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe
         SignUpResult.Failed(DownstreamService.ETMP, Outcome.Unauthorised, "status=401")
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return Misalignment(ETMP) for an unmapped ETMP status" in {
       val fixture = connectors()
       stubEtmp(fixture.etmpConnector, HttpResponse(Status.IM_A_TEAPOT, ""))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe
         SignUpResult.Failed(DownstreamService.ETMP, Outcome.Misalignment, "status=418")
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return Unavailable(ETMP) when the ETMP call does not complete" in {
@@ -200,12 +222,12 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       when(fixture.etmpConnector.signUp(anyArg[SignUpRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(GatewayTimeoutException("timed out")))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.Unavailable,
         "unreachable: GatewayTimeoutException"
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return AlreadySubscribed(ETMP) when ETMP returns 422 with code 002" in {
@@ -216,7 +238,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
       stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(Status.NO_CONTENT, ""))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.AlreadySubscribed,
         "status=422 code=002"
@@ -225,14 +247,14 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verify(fixture.dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
         anyArg[HeaderCarrier]
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return Unprocessable(ETMP) when ETMP returns 422 with any other code" in {
       val fixture = connectors()
       stubEtmp(fixture.etmpConnector, etmpErrors(EtmpErrors.CouldNotBeProcessed))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.ETMP,
         Outcome.Unprocessable,
         "status=422 code=003"
@@ -241,7 +263,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       verify(fixture.dpsConnector, never()).replaceSaoSubscription(anyArg[String], anyArg[SignUpRequest])(using
         anyArg[HeaderCarrier]
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "return Unavailable(DPS) with the logged failures and not call tax-enrolments when DPS returns 503" in {
@@ -252,14 +274,14 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       stubEtmp(fixture.etmpConnector, etmpCreated)
       stubDps(fixture.dpsConnector, HttpResponse(Status.SERVICE_UNAVAILABLE, body))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.DPS,
         Outcome.Unavailable,
         "status=503 origin=HIP failures=[MISSING_REQUIRED_FIELD]"
       )
 
       verify(fixture.taxEnrolmentsConnector, never()).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     taxEnrolmentFailures.foreach { case (status, outcome) =>
@@ -269,7 +291,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         stubDps(fixture.dpsConnector, HttpResponse(Status.CREATED, ""))
         stubTaxEnrolments(fixture.taxEnrolmentsConnector, HttpResponse(status, ""))
 
-        fixture.service.signUp(signUpRequest).futureValue shouldBe
+        fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe
           SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, outcome, s"status=$status")
 
         verify(fixture.etmpConnector).signUp(ArgumentMatchers.eq(signUpRequest))(using anyArg[HeaderCarrier])
@@ -278,7 +300,7 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
           ArgumentMatchers.eq(signUpRequest)
         )(using anyArg[HeaderCarrier])
         verify(fixture.taxEnrolmentsConnector).enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier])
-        verifyNoInteractions(fixture.emailService)
+        verifyNoInteractions(fixture.emailService, fixture.auditService)
       }
     }
 
@@ -289,12 +311,12 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
       when(fixture.taxEnrolmentsConnector.enrol(anyArg[TaxEnrolmentRequest])(using anyArg[HeaderCarrier]))
         .thenReturn(Future.failed(GatewayTimeoutException("timed out")))
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe SignUpResult.Failed(
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe SignUpResult.Failed(
         DownstreamService.TAX_ENROLMENTS,
         Outcome.Unavailable,
         "unreachable: GatewayTimeoutException"
       )
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
 
     "keep the tax-enrolments error body out of the logged detail" in {
@@ -309,9 +331,9 @@ class SignUpServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with
         )
       )
 
-      fixture.service.signUp(signUpRequest).futureValue shouldBe
+      fixture.service.signUp(signUpRequest, auditData).futureValue shouldBe
         SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, Outcome.BadRequest, "status=400")
-      verifyNoInteractions(fixture.emailService)
+      verifyNoInteractions(fixture.emailService, fixture.auditService)
     }
   }
 }

@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
+
 import cats.data.EitherT
 import cats.implicits.*
 import play.api.http.Status.*
@@ -42,10 +44,11 @@ class SignUpService @Inject() (
     etmpSubscriptionConnector: EtmpSubscriptionConnector,
     taxEnrolmentsConnector: TaxEnrolmentsConnector,
     dpsConnector: DpsConnector,
-    emailService: EmailService
+    emailService: EmailService,
+    auditService: SignUpAuditService
 )(using ExecutionContext) {
 
-  def signUp(signUpRequest: SignUpRequest)(using HeaderCarrier): Future[SignUpResult] =
+  def signUp(signUpRequest: SignUpRequest, auditData: AuditInputData)(using HeaderCarrier): Future[SignUpResult] =
     (for {
       accepted <- EitherT(
         etmpSubscriptionConnector
@@ -67,6 +70,8 @@ class SignUpService @Inject() (
           .recover(unreachable(DownstreamService.TAX_ENROLMENTS))
       )
     } yield {
+      auditService.auditSubscriptionSubmitted(signUpRequest, accepted.response, auditData)
+
       emailService.sendEmail(
         EmailTemplate.RegistrationConfirmation,
         signUpRequest,
