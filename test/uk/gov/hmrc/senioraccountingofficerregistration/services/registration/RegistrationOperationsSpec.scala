@@ -132,20 +132,20 @@ class RegistrationOperationsSpec
 
     "retain the legacy response mapping and classify transient responses" in {
       Seq(408, 429, 500, 502, 503, 504, 599).foreach(status =>
-        RegistrationFailures.response(status).retriable shouldBe true
+        RegistrationFailures.response(status, RegistrationStep.Etmp).retriable shouldBe true
       )
       Seq(400, 401, 403, 404, 409, 422).foreach(status =>
-        RegistrationFailures.response(status).retriable shouldBe false
+        RegistrationFailures.response(status, RegistrationStep.Etmp).retriable shouldBe false
       )
-      RegistrationFailures.response(400).failure shouldBe RegistrationFailure(
+      RegistrationFailures.response(400, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
         httpStatus = 500,
         reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT
       )
-      RegistrationFailures.response(401).failure shouldBe RegistrationFailure(
+      RegistrationFailures.response(401, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
         httpStatus = 500,
         reason = Reason.SERVICE_MISCONFIGURATION
       )
-      RegistrationFailures.response(503).failure shouldBe RegistrationFailure(
+      RegistrationFailures.response(503, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
         httpStatus = 502,
         reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE
       )
@@ -154,7 +154,18 @@ class RegistrationOperationsSpec
     "classify exceptions raised by the HTTP client using their upstream status" in {
       val f = new Fixture
       when(f.tax.enrol(any())(using any())).thenReturn(Future.failed(UpstreamErrorResponse("unauthorized", 401)))
-      f.operations.execute(f.taxCommand).failed.futureValue shouldBe RegistrationFailures.response(401)
+      f.operations.execute(f.taxCommand).failed.futureValue shouldBe RegistrationFailures.response(
+        401,
+        RegistrationStep.Etmp
+      )
+    }
+
+    "Classify an already-registered ETMP response as 422" in {
+      val f = new Fixture
+      when(f.etmp.signUp(any())(using any())).thenReturn(
+        Future.failed(UpstreamErrorResponse("", 422))
+      )
+      f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.response(422, RegistrationStep.Etmp)
     }
 
     "detect email failures rather than swallowing them" in {
@@ -165,7 +176,10 @@ class RegistrationOperationsSpec
         .find(_.step == Email)
         .value
       when(f.email.postEmail(any())(using any())).thenReturn(Future.successful(HttpResponse(503, "")))
-      f.operations.execute(command).failed.futureValue shouldBe RegistrationFailures.response(503)
+      f.operations.execute(command).failed.futureValue shouldBe RegistrationFailures.response(
+        503,
+        RegistrationStep.Etmp
+      )
     }
 
     "reuse a stable audit event identity and surface delivery failures" in {

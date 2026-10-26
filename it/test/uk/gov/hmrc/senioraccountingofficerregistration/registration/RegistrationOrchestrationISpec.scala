@@ -199,7 +199,7 @@ class RegistrationOrchestrationISpec
     }
 
     "schedule each retry delay and fail after exactly five attempts" in {
-      doReturn(Future.failed(RegistrationFailures.response(503))).when(operations).execute(any())(using any())
+      doReturn(Future.failed(RegistrationFailures.response(503, RegistrationStep.Etmp))).when(operations).execute(any())(using any())
       submit()
       Seq(60L, 300L, 900L, 3600L).zipWithIndex.foreach { (delay, index) =>
         run(Etmp)
@@ -224,7 +224,7 @@ class RegistrationOrchestrationISpec
       submit()
       run(Etmp)
       run(Dps)
-      doReturn(Future.failed(RegistrationFailures.response(401))).when(operations).execute(any())(using any())
+      doReturn(Future.failed(RegistrationFailures.response(401, RegistrationStep.TaxEnrolments))).when(operations).execute(any())(using any())
       run(TaxEnrolments)
       status(service.status("user", "key")) shouldBe INTERNAL_SERVER_ERROR
       entries(Email) shouldBe empty
@@ -367,7 +367,7 @@ class RegistrationOrchestrationISpec
 
     "recover a transient failure without passing its error to successor commands" in {
       submit()
-      doReturn(Future.failed(RegistrationFailures.response(503))).when(operations).execute(any())(using any())
+      doReturn(Future.failed(RegistrationFailures.response(503, RegistrationStep.Etmp))).when(operations).execute(any())(using any())
       run(Etmp); clock.advance(61)
       when(operations.execute(any())(using any())).thenAnswer { invocation =>
         val command = invocation.getArgument[RegistrationCommand](0)

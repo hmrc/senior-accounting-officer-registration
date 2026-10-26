@@ -36,16 +36,20 @@ final case class OperationRejected(failure: RegistrationFailure, retriable: Bool
 
 object RegistrationFailures {
 
-  def response(status: Int): OperationRejected = {
-    val (httpStatus, reason) = status match {
-      case 400       => (500, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
-      case 401 | 403 => (500, Reason.SERVICE_MISCONFIGURATION)
-      case 500       => (502, Reason.DOWNSTREAM_SERVICE_ERROR)
-      case 503       => (502, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
-      case _         => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+  def response(status: Int, step: RegistrationStep): OperationRejected = {
+    val (httpStatus, reason) = (status, step) match {
+      case (400, _)       => (500, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+      case (401 | 403, _) => (500, Reason.SERVICE_MISCONFIGURATION)
+      case (500, _)       => (502, Reason.DOWNSTREAM_SERVICE_ERROR)
+      case (503, _)       => (502, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
+      case (422, Etmp)    => (422, Reason.ALREADY_REGISTERED)
+      case _              => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
     }
     OperationRejected(
-      failure = RegistrationFailure(httpStatus = httpStatus, reason = reason),
+      failure = RegistrationFailure(
+        httpStatus = httpStatus,
+        reason = reason
+      ),
       retriable = status == 408 || status == 429 || status >= 500 && status <= 599
     )
   }
@@ -77,8 +81,8 @@ class RegistrationOperations @Inject() (
   private def required[A](value: Option[A], field: String): A =
     value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
 
-  private def check(response: HttpResponse, expected: Int): Unit =
-    if response.status != expected then throw RegistrationFailures.response(response.status)
+  private def check(response: HttpResponse, expected: Int, step: RegistrationStep): Unit =
+    if response.status != expected then throw RegistrationFailures.response(response.status, step)
 
   def execute(command: RegistrationCommand)(using HeaderCarrier): Future[RegistrationCommand] = {
     val data      = command.data
@@ -86,7 +90,7 @@ class RegistrationOperations @Inject() (
       command.step match {
         case Etmp =>
           etmp.signUp(data.request).map { response =>
-            check(response, expectedEtmpStatus)
+            check(response, expectedEtmpStatus, command.step)
             val accepted =
               Try(Json.parse(response.body).as[EtmpSuccessResponse]).getOrElse(throw RegistrationFailures.malformed)
             command.copy(data = data.copy(etmpResponse = Some(accepted)))
@@ -96,7 +100,7 @@ class RegistrationOperations @Inject() (
           dps
             .replaceSaoSubscription(etmpResponse.success.dsaoIdNumber, data.request)
             .map { response =>
-              check(response, expectedDpsStatus)
+              check(response, expectedDpsStatus, command.step)
               command
             }
         case TaxEnrolments =>
@@ -104,12 +108,12 @@ class RegistrationOperations @Inject() (
           taxEnrolments
             .enrol(TaxEnrolmentRequest(data.request, etmpResponse))
             .map { response =>
-              check(response, expectedTaxEnrolmentsStatus)
+              check(response, expectedTaxEnrolmentsStatus, command.step)
               command.copy(data = data.copy(authorization = None, completedAt = Some(clock.instant())))
             }
         case Email =>
           email.postEmail(required(command.email, "email")).map { response =>
-            check(response, expectedEmailStatus)
+            check(response, expectedEmailStatus, command.step)
             command
           }
         case Audit =>
@@ -162,7 +166,7 @@ class RegistrationOperations @Inject() (
       }
     }
     operation.map(_.copy(operationFinished = true)).recoverWith { case error: UpstreamErrorResponse =>
-      Future.failed(RegistrationFailures.response(error.statusCode))
+      Future.failed(RegistrationFailures.response(error.statusCode, command.step))
     }
   }
 }
