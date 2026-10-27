@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
+
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
@@ -44,7 +46,7 @@ class SignUpController @Inject() (
     ValidateRequest.as[SignUpRequest] { signUpRequest =>
       val correlationId = request.correlationId
 
-      signUpService.signUp(signUpRequest).map {
+      signUpService.signUp(signUpRequest, AuditInputData.create(request.path)).map {
         case SignUpResult.Success(subscriptionId) =>
           Ok(Json.toJson(SignUpResponse(subscriptionId)))
         case SignUpResult.Failed(downstreamService, outcome, detail) =>

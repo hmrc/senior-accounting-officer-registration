@@ -16,6 +16,15 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration
 
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.*
+import org.mockito.ArgumentCaptor
+import org.scalatestplus.mockito.MockitoSugar
+import play.api.inject.bind
+import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
+import uk.gov.hmrc.play.audit.model.DataEvent
+import scala.concurrent.Future
+
 import play.api.http.HeaderNames
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
 import play.api.libs.ws.WSClient
@@ -25,7 +34,18 @@ import support.{ISpecBase, MockAuthHelper, MockDpsHelper, MockEtmpHelper, MockTa
 
 import java.util.UUID
 
-class SignupIntegrationSpec extends ISpecBase {
+class SignupIntegrationSpec extends ISpecBase with MockitoSugar {
+
+  private lazy val audit = mock[AuditConnector]
+  override protected def applicationBuilder =
+    super.applicationBuilder.overrides(bind[AuditConnector].toInstance(audit))
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    reset(audit)
+    when(audit.sendEvent(any())(using any(), any())).thenReturn(Future.successful(AuditResult.Success))
+  }
+
 
   private val wsClient = app.injector.instanceOf[WSClient]
 
@@ -35,7 +55,16 @@ class SignupIntegrationSpec extends ISpecBase {
   val testCorrelationId: String  = UUID.randomUUID().toString
 
   "POST /sign-up endpoint" should {
-    "respond with 200 status" in {
+    for (delivery <- Seq("success", "disabled", "rejected", "failed", "throws", "pending")) {
+    s"respond with 200 status when audit delivery is $delivery" in {
+      delivery match {
+        case "disabled" => when(audit.sendEvent(any())(using any(), any())).thenReturn(Future.successful(AuditResult.Disabled))
+        case "rejected" => when(audit.sendEvent(any())(using any(), any())).thenReturn(Future.successful(AuditResult.Failure("unavailable")))
+        case "failed" => when(audit.sendEvent(any())(using any(), any())).thenReturn(Future.failed(new IllegalStateException("unavailable")))
+        case "throws" => when(audit.sendEvent(any())(using any(), any())).thenThrow(new IllegalStateException("unavailable"))
+        case "pending" => when(audit.sendEvent(any())(using any(), any())).thenReturn(scala.concurrent.Promise[AuditResult]().future)
+        case _ => ()
+      }
       MockAuthHelper.mockAuthOk()
       MockEtmpHelper.mockEtmpOk(testSubscriptionId)
       MockDpsHelper.mockDpsOk(testSubscriptionId)
@@ -54,9 +83,16 @@ class SignupIntegrationSpec extends ISpecBase {
       response.status mustBe 200
       response.body[String] mustBe s"""{"subscriptionId":"$testSubscriptionId"}"""
 
+      val event = ArgumentCaptor.forClass(classOf[DataEvent])
+      verify(audit).sendEvent(event.capture())(using any(), any())
+      event.getValue.auditType mustBe "SubscriptionSubmitted"
+      event.getValue.detail("etmpSubscriptionId") mustBe testSubscriptionId
+      event.getValue.tags("path") mustBe "/senior-accounting-officer-registration/sign-up"
       MockEtmpHelper.verifyEtmpWasCalled(testCorrelationId)
       MockDpsHelper.verifyDpsWasCalled(testSubscriptionId, testCorrelationId)
       MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId)
+    }
+
     }
 
     "respond with 500 status" when {
@@ -86,6 +122,7 @@ class SignupIntegrationSpec extends ISpecBase {
               .post(validRequestBodyAsString)
               .futureValue
 
+          verify(audit, never()).sendEvent(any())(using any(), any())
           response.status mustBe serviceResponseStatus
           response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
 
@@ -120,6 +157,7 @@ class SignupIntegrationSpec extends ISpecBase {
               .post(validRequestBodyAsString)
               .futureValue
 
+          verify(audit, never()).sendEvent(any())(using any(), any())
           response.status mustBe serviceResponseStatus
           response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
 
@@ -153,6 +191,7 @@ class SignupIntegrationSpec extends ISpecBase {
               .post(validRequestBodyAsString)
               .futureValue
 
+          verify(audit, never()).sendEvent(any())(using any(), any())
           response.status mustBe serviceResponseStatus
           response.body[String] mustBe s"""{"reason":"$serviceResponseReason"}"""
 

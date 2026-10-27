@@ -122,12 +122,18 @@ class SignUpControllerSpec
 
   "POST /sign-up" should {
     "return 200 with the subscription ID when the sign up succeeds" in {
-      when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
+      when(mockSignUpService.signUp(meq(signUpRequest), any())(using any()))
         .thenReturn(Future.successful(SignUpResult.Success(signUpResponse.subscriptionId)))
 
       val result = postSignUp(Json.toJson(signUpRequest))
 
       status(result) shouldBe Status.OK
+      val audit = org.mockito.ArgumentCaptor.forClass(
+        classOf[uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData]
+      )
+      verify(mockSignUpService).signUp(meq(signUpRequest), audit.capture())(using any())
+      audit.getValue.tags.path shouldBe routes.SignUpController.signUp.url
+
       contentAsJson(result).as[SignUpResponse] shouldBe signUpResponse
     }
 
@@ -201,7 +207,7 @@ class SignUpControllerSpec
 
   "POST /sign-up downstream failures" should {
     def resultFor(failure: SignUpResult): Future[Result] = {
-      when(mockSignUpService.signUp(meq(signUpRequest))(using any())).thenReturn(Future.successful(failure))
+      when(mockSignUpService.signUp(meq(signUpRequest), any())(using any())).thenReturn(Future.successful(failure))
       postSignUp(Json.toJson(signUpRequest))
     }
 
@@ -252,7 +258,7 @@ class SignUpControllerSpec
     val correlationId = UUID.randomUUID().toString
 
     def signUpFailing(outcome: Outcome, detail: String): (Int, JsValue, Seq[String]) = {
-      when(mockSignUpService.signUp(meq(signUpRequest))(using any()))
+      when(mockSignUpService.signUp(meq(signUpRequest), any())(using any()))
         .thenReturn(Future.successful(SignUpResult.Failed(DownstreamService.TAX_ENROLMENTS, outcome, detail)))
 
       val ((responseStatus, responseBody), logs) = withSignUpControllerLogs {
