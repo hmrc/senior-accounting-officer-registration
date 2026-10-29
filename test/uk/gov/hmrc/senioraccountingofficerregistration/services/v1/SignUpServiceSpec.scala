@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
-import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
-
 import org.mockito.ArgumentMatchers.any as anyArg
 import org.mockito.Mockito.*
 import org.mockito.{ArgumentCaptor, ArgumentMatchers}
@@ -35,6 +33,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   TaxEnrolmentsConnector
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.EmailService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{

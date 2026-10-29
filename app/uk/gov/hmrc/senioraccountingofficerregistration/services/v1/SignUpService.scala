@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
-import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
-
 import cats.data.EitherT
 import cats.implicits.*
 import play.api.http.Status.*
@@ -29,6 +27,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.connectors.{
   TaxEnrolmentsConnector
 }
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 import uk.gov.hmrc.senioraccountingofficerregistration.services.EmailService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.*

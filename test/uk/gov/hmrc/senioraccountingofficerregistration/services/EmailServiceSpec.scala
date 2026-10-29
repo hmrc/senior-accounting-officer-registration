@@ -92,7 +92,7 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
           parameters = Map(
             "recipientName"     -> "contact 1",
             "companyName"       -> "example company",
-            "submittedDateTime" -> "10 August 2026 at 03:26PM",
+            "submittedDateTime" -> "10 August 2026 at 3:26pm",
             "referenceId"       -> etmpSuccessResponse.success.dsaoIdNumber
           )
         ),
@@ -102,7 +102,7 @@ class EmailServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with 
           parameters = Map(
             "recipientName"     -> "contact 2",
             "companyName"       -> "example company",
-            "submittedDateTime" -> "10 August 2026 at 03:26PM",
+            "submittedDateTime" -> "10 August 2026 at 3:26pm",
             "referenceId"       -> etmpSuccessResponse.success.dsaoIdNumber
           )
         )
