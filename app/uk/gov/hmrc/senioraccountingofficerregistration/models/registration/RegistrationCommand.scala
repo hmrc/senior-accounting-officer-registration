@@ -58,9 +58,12 @@ final case class RegistrationCommand(
         case TaxEnrolments =>
           val etmpResponse = required(data.etmpResponse, "etmpResponse")
           val submitted    = DateTimeFormatter
-            .ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH)
+            .ofPattern("d MMMM yyyy 'at' h:mma", Locale.ENGLISH)
             .withZone(ZoneId.of("Europe/London"))
             .format(data.submittedAt)
+            .replaceFirst("AM$", "am")
+            .replaceFirst("PM$", "pm")
+
           val emails = data.request.contacts.value.map { contact =>
             next(
               Email,

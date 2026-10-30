@@ -101,7 +101,7 @@ class RegistrationOperationsSpec
       result.successors.count(_.step == Email) shouldBe 2
       result.successors.filter(_.step == Email).foreach { command =>
         command.email.value.parameters("referenceId") shouldBe accepted.success.dsaoIdNumber
-        command.email.value.parameters("submittedDateTime") shouldBe "6 October 2026 at 01:00PM"
+        command.email.value.parameters("submittedDateTime") shouldBe "6 October 2026 at 1:00pm"
       }
       result.successors.map(_.commandKey) shouldBe result.successors.map(_.commandKey).distinct
     }
