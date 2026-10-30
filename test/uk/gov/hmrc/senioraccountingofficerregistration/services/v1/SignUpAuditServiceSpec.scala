@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.v1
 
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.*
-import org.mockito.ArgumentCaptor
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -29,9 +29,11 @@ import uk.gov.hmrc.play.audit.model.DataEvent
 import uk.gov.hmrc.senioraccountingofficerregistration.TestData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.{AuditInputData, AuditTags}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.Contacts
+
+import scala.concurrent.{ExecutionContext, Future}
+
 import java.time.{Clock, Instant, ZoneOffset}
 import java.util.UUID
-import scala.concurrent.{ExecutionContext, Future}
 
 class SignUpAuditServiceSpec extends AnyWordSpec with Matchers with ScalaFutures with MockitoSugar with TestData {
   private given ExecutionContext = ExecutionContext.global

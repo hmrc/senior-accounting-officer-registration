@@ -16,14 +16,13 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.controllers.v1
 
-import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
-
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.actions.{EnsureCorrelationIdAction, IdentifierAction}
 import uk.gov.hmrc.senioraccountingofficerregistration.controllers.{BaseController, ValidateRequest}
 import uk.gov.hmrc.senioraccountingofficerregistration.models.*
+import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService
 import uk.gov.hmrc.senioraccountingofficerregistration.services.v1.SignUpService.{Outcome, SignUpResult}

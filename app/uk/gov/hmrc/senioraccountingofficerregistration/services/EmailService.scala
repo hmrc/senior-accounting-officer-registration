@@ -27,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 import java.time.format.DateTimeFormatter
-import java.time.{Clock, LocalDateTime}
+import java.time.{Clock, ZoneId, ZonedDateTime}
 import java.util.Locale
 import javax.inject.Inject
 
@@ -40,8 +40,7 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
     val correlationId = summon[HeaderCarrier].extraHeaders
       .collectFirst { case (name, value) if name.equalsIgnoreCase("correlationId") => value }
       .fold("not-provided")(identity)
-    val dateTime =
-      LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("d MMMM yyyy 'at' hh:mma", Locale.ENGLISH))
+    val dateTime = timestamp
 
     val emailRequests = for contact <- emailDetails.contacts yield {
       val request = EmailRequest(
@@ -83,6 +82,17 @@ class EmailService @Inject() (emailConnector: EmailConnector, clock: Clock)(usin
       companyName = signUpRequest.nominatedCompany.name.value,
       referenceId = etmpSuccessResponse.success.dsaoIdNumber
     )
+  }
+
+  private val formatter = DateTimeFormatter.ofPattern("d MMMM yyyy 'at' h:mma", Locale.ENGLISH)
+
+  private def timestamp: String = {
+    ZonedDateTime
+      .now(clock)
+      .withZoneSameInstant(ZoneId.of("Europe/London"))
+      .format(formatter)
+      .replaceFirst("AM$", "am")
+      .replaceFirst("PM$", "pm")
   }
 
   private final case class EmailDetails(

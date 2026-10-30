@@ -24,11 +24,12 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.EtmpSuccessRespons
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.AuditInputData
 import uk.gov.hmrc.senioraccountingofficerregistration.models.requests.SignUpRequest
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
+
 import java.time.Clock
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 @Singleton
 class SignUpAuditService @Inject() (auditConnector: AuditConnector, clock: Clock)(using ExecutionContext)
