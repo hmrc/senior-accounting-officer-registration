@@ -22,6 +22,7 @@ import org.mockito.Mockito.{reset, when}
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatestplus.mockito.MockitoSugar
+import play.api.http.Status.{ACCEPTED, BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, NO_CONTENT, OK, SERVICE_UNAVAILABLE, UNAUTHORIZED}
 import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
@@ -34,6 +35,7 @@ import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.Regis
 import uk.gov.hmrc.senioraccountingofficerregistration.models.registration.RegistrationStep.*
 import uk.gov.hmrc.senioraccountingofficerregistration.repositories.registration.*
 import uk.gov.hmrc.senioraccountingofficerregistration.services.registration.RegistrationWorker
+
 import java.time.{Clock, Instant, ZoneId, ZoneOffset}
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
@@ -110,15 +112,15 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
       MockEtmpHelper.mockEtmpOk(subscriptionId)
       MockDpsHelper.mockDpsOk(subscriptionId)
       MockTaxEnrolmentHelper.mockTaxEnrolmentOk()
-      stubFor(post(urlEqualTo("/hmrc/email")).willReturn(aResponse().withStatus(202)))
+      stubFor(post(urlEqualTo("/hmrc/email")).willReturn(aResponse().withStatus(ACCEPTED)))
       val submitted = endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue
-      submitted.status mustBe 202
+      submitted.status mustBe ACCEPTED
       submitted.json mustBe Json.obj("idempotencyKey" -> "testKey")
-      endpoint("/testKey").get().futureValue.status mustBe 204
+      endpoint("/testKey").get().futureValue.status mustBe NO_CONTENT
       run(Etmp); run(Dps); run(TaxEnrolments)
       auth(enrolled = true)
       val completed = endpoint("/testKey").get().futureValue
-      completed.status mustBe 200
+      completed.status mustBe OK
       completed.json mustBe Json.obj("subscriptionId" -> subscriptionId)
       endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
       run(Email); run(Audit)
@@ -145,29 +147,29 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
     }
 
     "reject missing or invalid keys and malformed signup data" in {
-      endpoint().post(validRequestBodyAsString).futureValue.status mustBe 400
+      endpoint().post(validRequestBodyAsString).futureValue.status mustBe BAD_REQUEST
       val body = Json.parse(validRequestBodyAsStringWithIdempotency).as[JsObject]
       Seq("", " ", "a" * 257).foreach { key =>
-        endpoint().post((body ++ Json.obj("idempotencyKey" -> key)).toString).futureValue.status mustBe 400
+        endpoint().post((body ++ Json.obj("idempotencyKey" -> key)).toString).futureValue.status mustBe BAD_REQUEST
       }
-      endpoint().post("{").futureValue.status mustBe 400
+      endpoint().post("{").futureValue.status mustBe BAD_REQUEST
       endpoint()
         .withHttpHeaders("Authorization" -> "Bearer caller-token")
         .post(validRequestBodyAsStringWithIdempotency)
         .futureValue
-        .status mustBe 400
+        .status mustBe BAD_REQUEST
     }
 
     "return a persisted legacy error for permanent tax enrolment failure" in {
       MockEtmpHelper.mockEtmpOk(subscriptionId)
       MockDpsHelper.mockDpsOk(subscriptionId)
       stubFor(
-        put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment")).willReturn(aResponse().withStatus(401))
+        put(urlEqualTo("/tax-enrolments/service/HMRC-DSAO-ORG/enrolment")).willReturn(aResponse().withStatus(UNAUTHORIZED))
       )
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe ACCEPTED
       run(Etmp); run(Dps); run(TaxEnrolments)
       val failed = endpoint("/testKey").get().futureValue
-      failed.status mustBe 500
+      failed.status mustBe INTERNAL_SERVER_ERROR
       failed.json mustBe Json.obj("reason" -> "SERVICE_MISCONFIGURATION")
       queues(Etmp).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
       queues(Dps).collection.find().toFuture().futureValue.head.item.data.authorization mustBe None
@@ -176,32 +178,32 @@ class RegistrationV2ISpec extends ISpecBase with MockitoSugar {
     }
 
     "keep transient ETMP failures pending" in {
-      MockEtmpHelper.mockEtmpFailure(subscriptionId, 503)
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
+      MockEtmpHelper.mockEtmpFailure(subscriptionId, SERVICE_UNAVAILABLE)
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe ACCEPTED
       run(Etmp)
-      endpoint("/testKey").get().futureValue.status mustBe 204
+      endpoint("/testKey").get().futureValue.status mustBe NO_CONTENT
       MockDpsHelper.verifyDpsWasCalled(subscriptionId, correlationId, 0)
     }
 
     "scope request keys to the authenticated owner" in {
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe ACCEPTED
       auth("someone-else")
-      endpoint("/testKey").get().futureValue.status mustBe 404
-      endpoint("/unknown").get().futureValue.status mustBe 404
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 202
+      endpoint("/testKey").get().futureValue.status mustBe NOT_FOUND
+      endpoint("/unknown").get().futureValue.status mustBe NOT_FOUND
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe ACCEPTED
     }
 
     "reject new registrations for enrolled users and requests without an authenticated identity" in {
       auth(enrolled = true)
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 403
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe FORBIDDEN
       stubFor(post(urlEqualTo("/auth/authorise")).willReturn(okJson("{\"allEnrolments\":[]}")))
-      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe 401
+      endpoint().post(validRequestBodyAsStringWithIdempotency).futureValue.status mustBe UNAUTHORIZED
       stubFor(
         post(urlEqualTo("/auth/authorise")).willReturn(
-          aResponse().withStatus(401).withHeader("WWW-Authenticate", "MDTP detail=\"MissingBearerToken\"")
+          aResponse().withStatus(UNAUTHORIZED).withHeader("WWW-Authenticate", "MDTP detail=\"MissingBearerToken\"")
         )
       )
-      endpoint("/testKey").get().futureValue.status mustBe 401
+      endpoint("/testKey").get().futureValue.status mustBe UNAUTHORIZED
     }
   }
 }

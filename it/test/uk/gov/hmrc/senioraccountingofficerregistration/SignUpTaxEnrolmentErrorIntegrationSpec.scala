@@ -18,6 +18,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration
 
 import org.apache.pekko.util.ByteString
 import play.api.http.HeaderNames
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, FORBIDDEN, IM_A_TEAPOT, INTERNAL_SERVER_ERROR, NOT_FOUND, SERVICE_UNAVAILABLE, UNAUTHORIZED}
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
 import play.api.libs.ws.{BodyWritable, InMemoryBody, WSClient}
 import support.MockAuthHelper.testBearerToken
@@ -72,13 +73,13 @@ class SignUpTaxEnrolmentErrorIntegrationSpec extends ISpecBase {
         MockEtmpHelper.mockEtmpOk(testSubscriptionId)
         MockDpsHelper.mockDpsOk(testSubscriptionId)
         MockTaxEnrolmentHelper.mockTaxEnrolmentFailure(
-          400,
+          BAD_REQUEST,
           """{"code":"INVALID_CREDENTIAL_ID","message":"user 1234 is not known to tax-enrolments"}"""
         )
 
         val response = postSignUp()
 
-        response.status mustBe 500
+        response.status mustBe INTERNAL_SERVER_ERROR
         response.body[String] mustBe """{"reason":"DOWNSTREAM_SERVICE_MISALIGNMENT"}"""
 
         MockTaxEnrolmentHelper.verifyTaxEnrolmentWasCalled(testCorrelationId)
@@ -91,13 +92,13 @@ object SignUpTaxEnrolmentErrorIntegrationSpec {
 
   /** (tax-enrolments status, expected sign-up status, expected sign-up error reason) */
   val taxEnrolmentErrorMappings: Seq[(Int, Int, String)] = Seq(
-    (400, 500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-    (401, 500, "SERVICE_MISCONFIGURATION"),
-    (403, 500, "SERVICE_MISCONFIGURATION"),
-    (404, 502, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-    (500, 502, "DOWNSTREAM_SERVICE_ERROR"),
-    (503, 502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-    (418, 502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+    (BAD_REQUEST, INTERNAL_SERVER_ERROR, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+    (UNAUTHORIZED, INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+    (FORBIDDEN, INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+    (NOT_FOUND, BAD_GATEWAY, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+    (INTERNAL_SERVER_ERROR, BAD_GATEWAY, "DOWNSTREAM_SERVICE_ERROR"),
+    (SERVICE_UNAVAILABLE, BAD_GATEWAY, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+    (IM_A_TEAPOT, BAD_GATEWAY, "DOWNSTREAM_SERVICE_MISALIGNMENT")
   )
 
   val signUpBody: String =

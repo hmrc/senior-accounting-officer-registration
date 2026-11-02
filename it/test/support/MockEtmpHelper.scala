@@ -19,6 +19,7 @@ package support
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import play.api.http.HeaderNames
+import play.api.http.Status.CREATED
 
 object MockEtmpHelper {
   def etmpUrl = "/etmp/RESTAdapter/dsao/subscription"
@@ -36,7 +37,7 @@ object MockEtmpHelper {
                          |"dsaoIdNumber": "$subscriptionId"
                          |}
                          |}""".stripMargin)
-            .withStatus(201)
+            .withStatus(CREATED)
         )
     )
 
@@ -55,7 +56,7 @@ object MockEtmpHelper {
   def mockEtmpSlow(delayMillis: Int): StubMapping =
     stubFor(
       post(urlEqualTo(etmpUrl))
-        .willReturn(aResponse().withStatus(201).withFixedDelay(delayMillis))
+        .willReturn(aResponse().withStatus(CREATED).withFixedDelay(delayMillis))
     )
 
   def verifyEtmpWasCalled(correlationId: String, times: Int = 1): Unit =

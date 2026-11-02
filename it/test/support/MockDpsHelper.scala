@@ -19,6 +19,7 @@ package support
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import play.api.http.HeaderNames
+import play.api.http.Status.CREATED
 
 object MockDpsHelper {
   def dpsUrl(subscriptionId: String) = s"/dapm/subscriptions/$subscriptionId"
@@ -51,7 +52,7 @@ object MockDpsHelper {
                          |    }
                          |  ]
                          |}""".stripMargin)
-            .withStatus(201)
+            .withStatus(CREATED)
         )
     )
 

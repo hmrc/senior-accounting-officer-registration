@@ -18,6 +18,7 @@ package support
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
+import play.api.http.Status.NO_CONTENT
 
 object MockTaxEnrolmentHelper {
   def taxEnrolmentUrl = "/tax-enrolments/service/HMRC-DSAO-ORG/enrolment"
@@ -27,7 +28,7 @@ object MockTaxEnrolmentHelper {
       put(urlEqualTo(taxEnrolmentUrl))
         .willReturn(
           aResponse()
-            .withStatus(204)
+            .withStatus(NO_CONTENT)
         )
     )
 

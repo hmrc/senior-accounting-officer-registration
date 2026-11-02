@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
+import play.api.http.Status.OK
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.ws.WSClient
 
@@ -47,7 +48,7 @@ class HealthEndpointIntegrationSpec
           .get()
           .futureValue
 
-      response.status shouldBe 200
+      response.status shouldBe OK
     }
   }
 }

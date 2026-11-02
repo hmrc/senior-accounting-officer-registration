@@ -23,9 +23,10 @@ import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.bind
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import uk.gov.hmrc.play.audit.model.DataEvent
-import scala.concurrent.Future
 
+import scala.concurrent.Future
 import play.api.http.HeaderNames
+import play.api.http.Status.{BAD_GATEWAY, BAD_REQUEST, FORBIDDEN, IM_A_TEAPOT, INTERNAL_SERVER_ERROR, OK, SERVICE_UNAVAILABLE, UNAUTHORIZED}
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
 import play.api.libs.ws.WSClient
 import support.MockAuthHelper.testBearerToken
@@ -80,7 +81,7 @@ class SignupIntegrationSpec extends ISpecBase with MockitoSugar {
           .post(validRequestBodyAsString)
           .futureValue
 
-      response.status mustBe 200
+      response.status mustBe OK
       response.body[String] mustBe s"""{"subscriptionId":"$testSubscriptionId"}"""
 
       val event = ArgumentCaptor.forClass(classOf[DataEvent])
@@ -98,12 +99,12 @@ class SignupIntegrationSpec extends ISpecBase with MockitoSugar {
     "respond with 500 status" when {
 
       for (etmpStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401 -> (500, "SERVICE_MISCONFIGURATION"),
-          403 -> (500, "SERVICE_MISCONFIGURATION"),
-          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+          BAD_REQUEST           -> (INTERNAL_SERVER_ERROR, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+          UNAUTHORIZED          -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+          FORBIDDEN             -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+          INTERNAL_SERVER_ERROR -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_ERROR"),
+          SERVICE_UNAVAILABLE   -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+          IM_A_TEAPOT           -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"ETMP returns a $etmpStatus with reason=$serviceResponseReason" in {
@@ -133,12 +134,12 @@ class SignupIntegrationSpec extends ISpecBase with MockitoSugar {
       }
 
       for (dpsStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401 -> (500, "SERVICE_MISCONFIGURATION"),
-          403 -> (500, "SERVICE_MISCONFIGURATION"),
-          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+        BAD_REQUEST           -> (INTERNAL_SERVER_ERROR, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+        UNAUTHORIZED          -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+        FORBIDDEN             -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+        INTERNAL_SERVER_ERROR -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_ERROR"),
+        SERVICE_UNAVAILABLE   -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+        IM_A_TEAPOT           -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"DPS returns a $dpsStatus" in {
@@ -167,12 +168,12 @@ class SignupIntegrationSpec extends ISpecBase with MockitoSugar {
       }
 
       for (taxEnrolmentStatus, (serviceResponseStatus, serviceResponseReason)) <- Map(
-          400 -> (500, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
-          401 -> (500, "SERVICE_MISCONFIGURATION"),
-          403 -> (500, "SERVICE_MISCONFIGURATION"),
-          500 -> (502, "DOWNSTREAM_SERVICE_ERROR"),
-          503 -> (502, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
-          418 -> (502, "DOWNSTREAM_SERVICE_MISALIGNMENT")
+        BAD_REQUEST           -> (INTERNAL_SERVER_ERROR, "DOWNSTREAM_SERVICE_MISALIGNMENT"),
+        UNAUTHORIZED          -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+        FORBIDDEN             -> (INTERNAL_SERVER_ERROR, "SERVICE_MISCONFIGURATION"),
+        INTERNAL_SERVER_ERROR -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_ERROR"),
+        SERVICE_UNAVAILABLE   -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_UNAVAILABLE"),
+        IM_A_TEAPOT           -> (BAD_GATEWAY, "DOWNSTREAM_SERVICE_MISALIGNMENT")
         )
       do {
         s"Tax enrolment returns a $taxEnrolmentStatus" in {
