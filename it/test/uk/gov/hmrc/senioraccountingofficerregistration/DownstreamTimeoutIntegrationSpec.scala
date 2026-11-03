@@ -18,6 +18,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration
 
 import org.apache.pekko.util.ByteString
 import play.api.http.HeaderNames
+import play.api.http.Status.BAD_GATEWAY
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
 import play.api.libs.ws.{BodyWritable, InMemoryBody, WSClient}
 import play.api.{Configuration, Environment}
@@ -26,7 +27,6 @@ import support.{ISpecBase, MockAuthHelper, MockEtmpHelper}
 import uk.gov.hmrc.senioraccountingofficerregistration.DownstreamTimeoutIntegrationSpec.*
 
 import scala.concurrent.duration.*
-
 import java.util.UUID
 
 class DownstreamTimeoutIntegrationSpec extends ISpecBase {
@@ -81,7 +81,7 @@ class DownstreamTimeoutIntegrationSpec extends ISpecBase {
               |""".stripMargin)
           .futureValue
 
-      response.status mustBe 502
+      response.status mustBe BAD_GATEWAY
       response.body[String] mustBe """{"reason":"DOWNSTREAM_SERVICE_UNAVAILABLE"}"""
 
       MockEtmpHelper.verifyEtmpWasCalled(testCorrelationId)

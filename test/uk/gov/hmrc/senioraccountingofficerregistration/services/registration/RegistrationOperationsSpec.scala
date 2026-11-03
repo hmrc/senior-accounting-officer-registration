@@ -23,6 +23,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import play.api.http.Status.*
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
@@ -57,6 +58,8 @@ class RegistrationOperationsSpec
     clock.instant(),
     auditData = AuditInputData.create("auditPath")
   )
+
+  private val maxServerErrorCode = 599
 
   private class Fixture {
 
@@ -93,7 +96,7 @@ class RegistrationOperationsSpec
 
     "prepare independent audit and recipient commands after successful tax enrolment" in {
       val f = new Fixture
-      when(f.tax.enrol(any())(using any())).thenReturn(Future.successful(HttpResponse(204, "")))
+      when(f.tax.enrol(any())(using any())).thenReturn(Future.successful(HttpResponse(NO_CONTENT, "")))
       val result = f.operations.execute(f.taxCommand).futureValue
       verify(f.tax).enrol(meq(TaxEnrolmentRequest(data.request, accepted)))(using any())
       result.data.completedAt shouldBe Some(clock.instant())
@@ -131,22 +134,28 @@ class RegistrationOperationsSpec
     }
 
     "retain the legacy response mapping and classify transient responses" in {
-      Seq(408, 429, 500, 502, 503, 504, 599).foreach(status =>
-        RegistrationFailures.response(status, RegistrationStep.Etmp).retriable shouldBe true
-      )
-      Seq(400, 401, 403, 404, 409, 422).foreach(status =>
+      Seq(
+        REQUEST_TIMEOUT,
+        TOO_MANY_REQUESTS,
+        INTERNAL_SERVER_ERROR,
+        BAD_GATEWAY,
+        SERVICE_UNAVAILABLE,
+        GATEWAY_TIMEOUT,
+        maxServerErrorCode
+      ).foreach(status => RegistrationFailures.response(status, RegistrationStep.Etmp).retriable shouldBe true)
+      Seq(BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, UNPROCESSABLE_ENTITY).foreach(status =>
         RegistrationFailures.response(status, RegistrationStep.Etmp).retriable shouldBe false
       )
-      RegistrationFailures.response(400, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
-        httpStatus = 500,
+      RegistrationFailures.response(BAD_REQUEST, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
+        httpStatus = INTERNAL_SERVER_ERROR,
         reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT
       )
-      RegistrationFailures.response(401, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
-        httpStatus = 500,
+      RegistrationFailures.response(UNAUTHORIZED, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
+        httpStatus = INTERNAL_SERVER_ERROR,
         reason = Reason.SERVICE_MISCONFIGURATION
       )
-      RegistrationFailures.response(503, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
-        httpStatus = 502,
+      RegistrationFailures.response(SERVICE_UNAVAILABLE, RegistrationStep.Etmp).failure shouldBe RegistrationFailure(
+        httpStatus = BAD_GATEWAY,
         reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE
       )
     }
@@ -155,7 +164,7 @@ class RegistrationOperationsSpec
       val f = new Fixture
       when(f.tax.enrol(any())(using any())).thenReturn(Future.failed(UpstreamErrorResponse("unauthorized", 401)))
       f.operations.execute(f.taxCommand).failed.futureValue shouldBe RegistrationFailures.response(
-        401,
+        UNAUTHORIZED,
         RegistrationStep.Etmp
       )
     }
@@ -163,7 +172,7 @@ class RegistrationOperationsSpec
     "Classify an already-registered ETMP response as 422" in {
       val f = new Fixture
       when(f.etmp.signUp(any())(using any())).thenReturn(
-        Future.failed(UpstreamErrorResponse("", 422))
+        Future.failed(UpstreamErrorResponse("", UNPROCESSABLE_ENTITY))
       )
       f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.response(422, RegistrationStep.Etmp)
     }
@@ -175,9 +184,9 @@ class RegistrationOperationsSpec
         .successors
         .find(_.step == Email)
         .value
-      when(f.email.postEmail(any())(using any())).thenReturn(Future.successful(HttpResponse(503, "")))
+      when(f.email.postEmail(any())(using any())).thenReturn(Future.successful(HttpResponse(SERVICE_UNAVAILABLE, "")))
       f.operations.execute(command).failed.futureValue shouldBe RegistrationFailures.response(
-        503,
+        SERVICE_UNAVAILABLE,
         RegistrationStep.Etmp
       )
     }

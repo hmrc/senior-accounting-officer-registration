@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.senioraccountingofficerregistration.services.registration
 
+import play.api.http.Status.*
 import play.api.libs.json.Json
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
@@ -36,31 +37,34 @@ final case class OperationRejected(failure: RegistrationFailure, retriable: Bool
 
 object RegistrationFailures {
 
+  private val maxServerErrorCode = 599
+
   def response(status: Int, step: RegistrationStep): OperationRejected = {
     val (httpStatus, reason) = (status, step) match {
-      case (400, _)       => (500, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
-      case (401 | 403, _) => (500, Reason.SERVICE_MISCONFIGURATION)
-      case (500, _)       => (502, Reason.DOWNSTREAM_SERVICE_ERROR)
-      case (503, _)       => (502, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
-      case (422, Etmp)    => (422, Reason.ALREADY_REGISTERED)
-      case _              => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+      case (BAD_REQUEST, _)              => (INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+      case (UNAUTHORIZED | FORBIDDEN, _) => (INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION)
+      case (INTERNAL_SERVER_ERROR, _)    => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_ERROR)
+      case (SERVICE_UNAVAILABLE, _)      => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
+      case (UNPROCESSABLE_ENTITY, Etmp)  => (UNPROCESSABLE_ENTITY, Reason.ALREADY_REGISTERED)
+      case _                             => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
     }
     OperationRejected(
       failure = RegistrationFailure(
         httpStatus = httpStatus,
         reason = reason
       ),
-      retriable = status == 408 || status == 429 || status >= 500 && status <= 599
+      retriable =
+        status == REQUEST_TIMEOUT || status == TOO_MANY_REQUESTS || status >= INTERNAL_SERVER_ERROR && status <= maxServerErrorCode
     )
   }
 
   val malformed: OperationRejected =
     OperationRejected(
-      failure = RegistrationFailure(httpStatus = 502, reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
+      failure = RegistrationFailure(httpStatus = BAD_GATEWAY, reason = Reason.DOWNSTREAM_SERVICE_MISALIGNMENT),
       retriable = false
     )
   val unavailable: RegistrationFailure =
-    RegistrationFailure(httpStatus = 502, reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
+    RegistrationFailure(httpStatus = BAD_GATEWAY, reason = Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
 }
 
 @Singleton
@@ -73,10 +77,10 @@ class RegistrationOperations @Inject() (
     clock: Clock
 )(using ExecutionContext) {
 
-  private val expectedEtmpStatus          = 201
-  private val expectedDpsStatus           = 201
-  private val expectedTaxEnrolmentsStatus = 204
-  private val expectedEmailStatus         = 202
+  private val expectedEtmpStatus          = CREATED
+  private val expectedDpsStatus           = CREATED
+  private val expectedTaxEnrolmentsStatus = NO_CONTENT
+  private val expectedEmailStatus         = ACCEPTED
 
   private def required[A](value: Option[A], field: String): A =
     value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
