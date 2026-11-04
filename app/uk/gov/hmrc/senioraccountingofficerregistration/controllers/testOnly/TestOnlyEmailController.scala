@@ -66,7 +66,7 @@ class TestOnlyEmailController @Inject() (
 
   private def signUpRequest(email: String, recipientName: String): SignUpRequest =
     SignUpRequest(
-      etmpSafeId = EtmpSafeId(testEtmpSafeId),
+      etmpSafeId = Some(EtmpSafeId(testEtmpSafeId)),
       nominatedCompany = NominatedCompany(CompanyName(testCompanyName), Utr(testUtr), Crn(testCrn)),
       contacts = Contacts(
         List(Contact(PersonName(recipientName), Email(email), EmailStatus.valid, Language.`en-GB`))

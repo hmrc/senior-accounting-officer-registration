@@ -19,7 +19,7 @@ package uk.gov.hmrc.senioraccountingofficerregistration.models.requests
 import play.api.libs.json.*
 
 final case class SignUpRequest(
-    etmpSafeId: EtmpSafeId,
+    etmpSafeId: Option[EtmpSafeId],
     nominatedCompany: NominatedCompany,
     contacts: Contacts,
     idempotencyKey: Option[String] = None

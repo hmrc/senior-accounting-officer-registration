@@ -38,7 +38,7 @@ class DpsConnector @Inject() (httpClient: HttpClientV2, appConfig: AppConfig)(us
   ): Future[HttpResponse] = {
     val replaceRequest: ReplaceSaoSubscriptionRequest =
       ReplaceSaoSubscriptionRequest(
-        signUpRequest.etmpSafeId.value,
+        signUpRequest.etmpSafeId.map(_.value).getOrElse("-"),
         signUpRequest.nominatedCompany,
         signUpRequest.contacts.value
       )

@@ -172,7 +172,7 @@ class SignUpControllerSpec
       status(result) shouldBe Status.BAD_REQUEST
       contentAsString(
         result
-      ) shouldBe """[{"reason":"MISSING_REQUIRED_FIELD","path":"/contacts"},{"reason":"MISSING_REQUIRED_FIELD","path":"/nominatedCompany"},{"reason":"MISSING_REQUIRED_FIELD","path":"/etmpSafeId"}]"""
+      ) shouldBe """[{"reason":"MISSING_REQUIRED_FIELD","path":"/contacts"},{"reason":"MISSING_REQUIRED_FIELD","path":"/nominatedCompany"}]"""
     }
 
     "return 400 when the request contains no contacts" in {

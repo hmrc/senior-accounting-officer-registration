@@ -81,13 +81,22 @@ class DpsConnectorIntegrationSpec
   private lazy val connector = app.injector.instanceOf[DpsConnector]
 
   "replaceSaoSubscription" should {
+    "send the agreed marker when the SAFE ID is absent" in {
+      val request = generateSignUpRequest(2).copy(etmpSafeId = None)
+      val expected = Json.toJson(ReplaceSaoSubscriptionRequest("-", request.nominatedCompany, request.contacts.value))
+      wireMockServer.stubFor(put("/dapm/subscriptions/missing-safe-id").willReturn(aResponse().withStatus(Status.CREATED)))
+      connector.replaceSaoSubscription("missing-safe-id", request).futureValue.status shouldBe Status.CREATED
+      wireMockServer.verify(putRequestedFor(urlEqualTo("/dapm/subscriptions/missing-safe-id"))
+        .withRequestBody(equalToJson(Json.stringify(expected))))
+    }
+
     "return the raw 201 response with empty payload" in {
       val signUpRequest = generateSignUpRequest(2)
 
       val expectedSignUpRequest =
         s"""
           |{
-          | "etmpSafeId": "${signUpRequest.etmpSafeId.value}",
+          | "etmpSafeId": "${signUpRequest.etmpSafeId.get.value}",
           | "nominatedCompany": {
           |   "name": "${signUpRequest.nominatedCompany.name.value}",
           |   "utr": "${signUpRequest.nominatedCompany.utr.value}",
@@ -128,7 +137,7 @@ class DpsConnectorIntegrationSpec
       val signUpRequest                 = generateSignUpRequest(2)
       val replaceSaoSubscriptionRequest =
         ReplaceSaoSubscriptionRequest(
-          signUpRequest.etmpSafeId.value,
+          signUpRequest.etmpSafeId.get.value,
           signUpRequest.nominatedCompany,
           signUpRequest.contacts.value
         )

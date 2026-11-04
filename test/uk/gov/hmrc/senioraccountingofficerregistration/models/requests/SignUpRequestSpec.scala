@@ -25,6 +25,15 @@ class SignUpRequestSpec extends AnyWordSpec with Matchers with TestData {
 
   "Json reader for SignUpRequest" must {
 
+    "accept absent and null SAFE IDs while validating supplied IDs" in {
+      val original = generateSignUpRequest(2)
+      val json     = Json.toJson(original).as[JsObject]
+      (json - "etmpSafeId").as[SignUpRequest] mustBe original.copy(etmpSafeId = None)
+      (json + ("etmpSafeId" -> JsNull)).as[SignUpRequest] mustBe original.copy(etmpSafeId = None)
+      (json + ("etmpSafeId" -> JsString("x" * 16))).validate[SignUpRequest].isError mustBe true
+      json.as[SignUpRequest] mustBe original
+    }
+
     "return a SignUpRequest when all of the fields exist" in {
       val testCompany = NominatedCompany(
         crn = Crn(generateCrn),
@@ -54,7 +63,7 @@ class SignUpRequestSpec extends AnyWordSpec with Matchers with TestData {
         SignUpRequest(
           contacts = Contacts(List(testContact)),
           nominatedCompany = testCompany,
-          etmpSafeId = EtmpSafeId(etmpSafeId)
+          etmpSafeId = Some(EtmpSafeId(etmpSafeId))
         )
       )
     }

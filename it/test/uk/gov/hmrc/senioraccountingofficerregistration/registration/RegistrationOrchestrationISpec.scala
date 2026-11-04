@@ -171,7 +171,7 @@ class RegistrationOrchestrationISpec
           false,
           "correlation",
           request.copy(etmpSafeId =
-            uk.gov.hmrc.senioraccountingofficerregistration.models.requests.EtmpSafeId("other")
+            Some(uk.gov.hmrc.senioraccountingofficerregistration.models.requests.EtmpSafeId("other"))
           ),
           None,
           auditData

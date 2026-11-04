@@ -60,7 +60,7 @@ trait TestData {
 
   protected def generateSignUpRequest(seed: Int): SignUpRequest = {
     SignUpRequest(
-      etmpSafeId = EtmpSafeId("etmpSafeId"),
+      etmpSafeId = Some(EtmpSafeId("etmpSafeId")),
       contacts = generateContacts(),
       nominatedCompany = generateNominatedCompany(seed)
     )
