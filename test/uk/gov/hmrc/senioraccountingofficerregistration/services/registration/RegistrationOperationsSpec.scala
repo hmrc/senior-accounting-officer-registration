@@ -169,12 +169,59 @@ class RegistrationOperationsSpec
       )
     }
 
-    "Classify an already-registered ETMP response as 422" in {
+    Seq("001", "002", "003", "004", "999").foreach { code =>
+      s"classify ETMP 422 code $code as already registered only for 002" in {
+        val f    = new Fixture
+        val body = Json.stringify(
+          Json.toJson(
+            EtmpErrorResponse(
+              EtmpErrors(
+                "2026-01-31T10:26:17Z",
+                code,
+                s"text for $code"
+              )
+            )
+          )
+        )
+        when(f.etmp.signUp(any())(using any())).thenReturn(Future.successful(HttpResponse(UNPROCESSABLE_ENTITY, body)))
+
+        val expected =
+          if code == "002" then
+            OperationRejected(RegistrationFailure(UNPROCESSABLE_ENTITY, Reason.ALREADY_REGISTERED), retriable = false)
+          else RegistrationFailures.malformed
+        f.operations.execute(f.root).failed.futureValue shouldBe expected
+      }
+    }
+
+    Seq("", "not json", "{}", """{"errors":{"code":"002"}}""").foreach { body =>
+      s"reject ETMP 422 with malformed body '$body' without reporting already registered" in {
+        val f = new Fixture
+        when(f.etmp.signUp(any())(using any())).thenReturn(Future.successful(HttpResponse(UNPROCESSABLE_ENTITY, body)))
+        f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.malformed
+      }
+    }
+
+    "not infer already registered from an upstream 422 exception without an ETMP code" in {
       val f = new Fixture
-      when(f.etmp.signUp(any())(using any())).thenReturn(
-        Future.failed(UpstreamErrorResponse("", UNPROCESSABLE_ENTITY))
+      when(f.etmp.signUp(any())(using any())).thenReturn(Future.failed(UpstreamErrorResponse("", UNPROCESSABLE_ENTITY)))
+      f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.malformed
+    }
+
+    "not classify another downstream service's 422 as already registered" in {
+      val f    = new Fixture
+      val body = Json.stringify(
+        Json.toJson(
+          EtmpErrorResponse(
+            EtmpErrors(
+              "2026-01-31T10:26:17Z",
+              "002",
+              "Business Partner already subscribed for DSAO"
+            )
+          )
+        )
       )
-      f.operations.execute(f.root).failed.futureValue shouldBe RegistrationFailures.response(422, RegistrationStep.Etmp)
+      when(f.tax.enrol(any())(using any())).thenReturn(Future.successful(HttpResponse(UNPROCESSABLE_ENTITY, body)))
+      f.operations.execute(f.taxCommand).failed.futureValue shouldBe RegistrationFailures.malformed
     }
 
     "detect email failures rather than swallowing them" in {

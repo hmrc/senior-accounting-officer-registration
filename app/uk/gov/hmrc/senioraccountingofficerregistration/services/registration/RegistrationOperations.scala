@@ -39,14 +39,17 @@ object RegistrationFailures {
 
   private val maxServerErrorCode = 599
 
-  def response(status: Int, step: RegistrationStep): OperationRejected = {
+  def response(status: Int, step: RegistrationStep, body: String = ""): OperationRejected = {
     val (httpStatus, reason) = (status, step) match {
       case (BAD_REQUEST, _)              => (INTERNAL_SERVER_ERROR, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
       case (UNAUTHORIZED | FORBIDDEN, _) => (INTERNAL_SERVER_ERROR, Reason.SERVICE_MISCONFIGURATION)
       case (INTERNAL_SERVER_ERROR, _)    => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_ERROR)
       case (SERVICE_UNAVAILABLE, _)      => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
-      case (UNPROCESSABLE_ENTITY, Etmp)  => (UNPROCESSABLE_ENTITY, Reason.ALREADY_REGISTERED)
-      case _                             => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+      case (UNPROCESSABLE_ENTITY, Etmp)
+          if Try(Json.parse(body).as[EtmpErrorResponse]).toOption
+            .exists(_.errors.code == EtmpErrors.AlreadySubscribed) =>
+        (UNPROCESSABLE_ENTITY, Reason.ALREADY_REGISTERED)
+      case _ => (BAD_GATEWAY, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
     }
     OperationRejected(
       failure = RegistrationFailure(
@@ -86,7 +89,7 @@ class RegistrationOperations @Inject() (
     value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
 
   private def check(response: HttpResponse, expected: Int, step: RegistrationStep): Unit =
-    if response.status != expected then throw RegistrationFailures.response(response.status, step)
+    if response.status != expected then throw RegistrationFailures.response(response.status, step, response.body)
 
   def execute(command: RegistrationCommand)(using HeaderCarrier): Future[RegistrationCommand] = {
     val data      = command.data
