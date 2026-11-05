@@ -36,14 +36,17 @@ final case class OperationRejected(failure: RegistrationFailure, retriable: Bool
 
 object RegistrationFailures {
 
-  def response(status: Int, step: RegistrationStep): OperationRejected = {
+  def response(status: Int, step: RegistrationStep, body: String = ""): OperationRejected = {
     val (httpStatus, reason) = (status, step) match {
       case (400, _)       => (500, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
       case (401 | 403, _) => (500, Reason.SERVICE_MISCONFIGURATION)
       case (500, _)       => (502, Reason.DOWNSTREAM_SERVICE_ERROR)
       case (503, _)       => (502, Reason.DOWNSTREAM_SERVICE_UNAVAILABLE)
-      case (422, Etmp)    => (422, Reason.ALREADY_REGISTERED)
-      case _              => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
+      case (422, Etmp)
+          if Try(Json.parse(body).as[EtmpErrorResponse]).toOption
+            .exists(_.errors.code == EtmpErrors.AlreadySubscribed) =>
+        (422, Reason.ALREADY_REGISTERED)
+      case _ => (502, Reason.DOWNSTREAM_SERVICE_MISALIGNMENT)
     }
     OperationRejected(
       failure = RegistrationFailure(
@@ -82,7 +85,7 @@ class RegistrationOperations @Inject() (
     value.getOrElse(throw new IllegalStateException(s"Missing required registration field: $field"))
 
   private def check(response: HttpResponse, expected: Int, step: RegistrationStep): Unit =
-    if response.status != expected then throw RegistrationFailures.response(response.status, step)
+    if response.status != expected then throw RegistrationFailures.response(response.status, step, response.body)
 
   def execute(command: RegistrationCommand)(using HeaderCarrier): Future[RegistrationCommand] = {
     val data      = command.data
