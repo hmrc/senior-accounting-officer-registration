@@ -6,6 +6,5 @@ variables:
     value: http://localhost:9949
   - name: hubBaseUrl
     value: http://localhost:10056/senior-accounting-officer
-  - secret: true
-    name: authorization
-    description: ""
+  - name: authorization
+    value: GNAP dummy-fc0d5c4db2da4526ac1fe54cd9fea52a,Bearer BXQ3/Treo4kQCZvVcCqKPh0jwF+c53f4zIiHgnfeY2I2wQFGD3iyNdggAbvlMfkaL45Ah3biZefb1FscnEtaAefGzH3JXZYd0wOyXtHe3W2GFOWZ4MNuzRiNPSvIyMLzpsTvNoV28e/OJ6rk6XMxXr8Dkti1w+EnRgW6Vp3AJwxqkMA/LW5HS5OHiHwxXpys/SsCJHiDyv5jJQREo7nuFQ==
