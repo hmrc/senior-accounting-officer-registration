@@ -1,0 +1,39 @@
+info:
+  name: post sign up - missing etmpSafeID
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/sign-up"
+  headers:
+    - name: Authorization
+      value: "{{authorization}}"
+    - name: correlationId
+      value: "{{$randomUUID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "etmpSafeId": "-",
+        "nominatedCompany": {
+          "name": "Test Company Ltd PLC",
+          "utr": "2233445567",
+          "crn": "11223344"
+        },
+        "contacts": [
+          {
+            "name": "Jane Doe",
+            "email": "jane.doe@example.com",
+            "status": "valid",
+            "language": "en-GB"
+          }
+        ]
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
